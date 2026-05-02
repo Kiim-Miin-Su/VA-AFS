@@ -5,6 +5,32 @@
 
 ---
 
+## 데이터 다운로드
+
+Google Drive: <google drive link>
+
+이 저장소는 GitHub에 바로 올릴 수 있도록 코드, 설정 파일, 빈 폴더 구조만 포함한다. 대용량 원본 데이터와 실행 결과는 위 Google Drive에서 받은 뒤 `src/` 기준으로 아래 위치에 배치한다.
+
+| 데이터 묶음 | 배치 위치 |
+| --- | --- |
+| `all_sqe.zip` | `BlockGCN/data/NW-UCLA/all_sqe/` |
+| `nturgbd_skeletons_s001_to_s017.zip` | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons/` |
+| `nturgbd_skeletons_s018_to_s032.zip` | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120/` |
+| `videos.zip` | `VA-AFS/videos/` |
+
+가장 쉬운 복원 방법은 다운로드한 zip 파일들을 `src/../data/`에 둔 뒤, `src/` 폴더에서 아래 명령을 그대로 실행하는 것이다.
+
+```bash
+unzip ../data/all_sqe.zip -d BlockGCN/data/NW-UCLA
+unzip ../data/nturgbd_skeletons_s001_to_s017.zip -d BlockGCN/data/nturgbd_raw/nturgb+d_skeletons
+unzip ../data/nturgbd_skeletons_s018_to_s032.zip -d BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120
+unzip ../data/videos.zip -d VA-AFS
+```
+
+전체 NTU60/NTU120 전처리를 하려면 `nturgbd_skeletons_s001_to_s017.zip`과 `nturgbd_skeletons_s018_to_s032.zip`이 모두 필요하다. 데이터 복원 후에는 BlockGCN README 순서대로 `data/ntu` 또는 `data/ntu120`의 전처리 스크립트를 실행해 `.npz`를 생성한다.
+
+---
+
 ## 0. Related Publications & Terms, Conditions of Use
 
 | Terms & Conditions of Use
@@ -108,6 +134,59 @@ VA-AFS/
 | `outputs/blockgcn_npz/` | BlockGCN 평가용 VA-AFS 적용 NTU `.npz` |
 | `outputs/blockgcn_configs/` | BlockGCN 실행용 임시 config |
 | `outputs/blockgcn_acc/` | BlockGCN accuracy 로그와 score |
+
+### 2.1 대용량 데이터 복원
+
+GitHub에는 실행에 필요한 폴더 구조와 코드만 유지하고, 대용량 데이터와 생성 결과 파일은 올리지 않는다. 저장소에는 빈 데이터 폴더를 보존하기 위한 `.gitkeep`, BlockGCN 전처리에 필요한 작은 `.py`, `statistics/*.txt`, 그리고 NW-UCLA ensemble에서 참조하는 `BlockGCN/data/NW-UCLA/val_label.pkl`만 포함된다.
+
+상단의 Google Drive 데이터 묶음 또는 원본 데이터셋을 내려받은 뒤, `src/` 기준으로 아래 경로가 채워지게 한다.
+
+```text
+BlockGCN/data/NW-UCLA/all_sqe/
+BlockGCN/data/nturgbd_raw/nturgb+d_skeletons/
+BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120/
+VA-AFS/videos/
+```
+
+압축 파일을 `../data/`에 받은 경우 예시는 다음과 같다.
+
+```bash
+unzip ../data/all_sqe.zip -d BlockGCN/data/NW-UCLA
+unzip ../data/nturgbd_skeletons_s001_to_s017.zip -d BlockGCN/data/nturgbd_raw/nturgb+d_skeletons
+unzip ../data/nturgbd_skeletons_s018_to_s032.zip -d BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120
+unzip ../data/videos.zip -d VA-AFS
+```
+
+복원 후 확인:
+
+```bash
+ls BlockGCN/data/NW-UCLA/all_sqe
+ls BlockGCN/data/nturgbd_raw
+ls VA-AFS/videos
+```
+
+주의:
+
+```text
+BlockGCN/data 아래의 대용량 raw/json/npz 데이터 파일, VA-AFS/videos, VA-AFS/outputs, outputs 아래의 실제 데이터 파일은 .gitignore 대상이다.
+단, BlockGCN의 `ensemble.py`가 직접 읽는 `BlockGCN/data/NW-UCLA/val_label.pkl`은 작은 라벨 메타데이터이므로 Git에 유지한다.
+새 데이터를 추가해도 GitHub에는 올라가지 않는다.
+폴더 구조는 .gitkeep으로 유지한다.
+```
+
+### 2.2 BlockGCN 통합 상태
+
+`BlockGCN/`은 공식 BlockGCN 구현을 이 프로젝트 안에 vendor 형태로 둔 것이다. 공식 저장소의 최상위 구성인 `config/`, `data/`, `feeders/`, `graph/`, `model/`, `torchlight/`, `main.py`, `train.sh`, `evaluate.sh`, `ensemble.py`는 유지한다.
+
+다만 이 프로젝트의 `VA-AFS` 코드는 `../BlockGCN`을 직접 호출해서 accuracy 평가를 수행한다. 따라서 `BlockGCN/`을 원본 저장소로 다시 덮어쓸 때도 다음 로컬 정책은 유지해야 한다.
+
+```text
+1. BlockGCN 소스/설정/전처리 스크립트는 유지한다.
+2. BlockGCN/data의 대용량 raw 데이터와 생성 npz는 Git에 올리지 않는다.
+3. VA-AFS/videos와 VA-AFS/outputs의 입력/출력 파일도 Git에 올리지 않는다.
+4. VA-AFS의 run_blockgcn_acc.py, apply_va_afs_to_blockgcn_npz.py가 참조하는 상대 경로를 바꾸지 않는다.
+5. NW-UCLA ensemble에 필요한 BlockGCN/data/NW-UCLA/val_label.pkl은 유지한다.
+```
 
 ---
 

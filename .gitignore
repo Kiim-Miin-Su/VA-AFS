@@ -1,0 +1,30 @@
+.DS_Store
+
+# Large local datasets and generated artifacts are stored outside Git.
+BlockGCN/data/**
+!BlockGCN/data/**/
+!BlockGCN/data/**/.gitkeep
+!BlockGCN/data/NW-UCLA/val_label.pkl
+!BlockGCN/data/ntu/*.py
+!BlockGCN/data/ntu/raw_data/frames_drop.log
+!BlockGCN/data/ntu/statistics/*.txt
+!BlockGCN/data/ntu120/*.py
+!BlockGCN/data/ntu120/statistics/*.txt
+
+VA-AFS/videos/**
+!VA-AFS/videos/**/
+!VA-AFS/videos/**/.gitkeep
+
+VA-AFS/outputs/**
+!VA-AFS/outputs/**/
+!VA-AFS/outputs/**/.gitkeep
+
+outputs/**
+!outputs/**/
+!outputs/**/.gitkeep
+
+# Large model/checkpoint artifacts.
+BlockGCN/work_dir/
+BlockGCN/runs/
+BlockGCN/BlockGCN_pretrained_weights/
+*.zip
