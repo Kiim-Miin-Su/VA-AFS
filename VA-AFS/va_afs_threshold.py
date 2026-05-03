@@ -385,9 +385,9 @@ def main():
         default=None,
         help="Original video path. If omitted, the script tries to find it under videos/.",
     )
-    parser.add_argument("--tau", type=float, default=TAU[-1])
-    parser.add_argument("--k_max", type=int, default=K_MAX[-1])
-    parser.add_argument("--window_size", type=int, default=WINDOW_SIZE[-1])
+    parser.add_argument("--tau", type=float, default=TAU[-2])
+    parser.add_argument("--k_max", type=int, default=K_MAX[-2])
+    parser.add_argument("--window_size", type=int, default=WINDOW_SIZE[-2])
     parser.add_argument("--output_dir", default="outputs")
     args = parser.parse_args()
 

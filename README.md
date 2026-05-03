@@ -7,27 +7,40 @@
 
 ## 데이터 다운로드
 
-Google Drive: <google drive link>
+Google Drive: https://drive.google.com/drive/folders/1JX_Jf2jayPkdh8ii4jwNCrZSe6KdweKh?usp=sharing
 
 이 저장소는 GitHub에 바로 올릴 수 있도록 코드, 설정 파일, 빈 폴더 구조만 포함한다. 대용량 원본 데이터와 실행 결과는 위 Google Drive에서 받은 뒤 `src/` 기준으로 아래 위치에 배치한다.
 
-| 데이터 묶음 | 배치 위치 |
-| --- | --- |
-| `all_sqe.zip` | `BlockGCN/data/NW-UCLA/all_sqe/` |
-| `nturgbd_skeletons_s001_to_s017.zip` | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons/` |
-| `nturgbd_skeletons_s018_to_s032.zip` | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120/` |
-| `videos.zip` | `VA-AFS/videos/` |
+| 데이터 묶음                          | 압축 해제 위치                 | 압축 해제 후 기대 경로                               |
+| ------------------------------------ | ------------------------------ | ---------------------------------------------------- |
+| `all_sqe.zip`                        | `BlockGCN/data/NW-UCLA/`       | `BlockGCN/data/NW-UCLA/all_sqe/`                     |
+| `nturgbd_skeletons_s001_to_s017.zip` | `BlockGCN/data/nturgbd_raw/`   | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons/`      |
+| `nturgbd_skeletons_s018_to_s032.zip` | `BlockGCN/data/nturgbd_raw/`   | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120/`   |
+| `videos.zip`                         | `VA-AFS/`                      | `VA-AFS/videos/`                                     |
 
 가장 쉬운 복원 방법은 다운로드한 zip 파일들을 `src/../data/`에 둔 뒤, `src/` 폴더에서 아래 명령을 그대로 실행하는 것이다.
 
 ```bash
 unzip ../data/all_sqe.zip -d BlockGCN/data/NW-UCLA
-unzip ../data/nturgbd_skeletons_s001_to_s017.zip -d BlockGCN/data/nturgbd_raw/nturgb+d_skeletons
-unzip ../data/nturgbd_skeletons_s018_to_s032.zip -d BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120
+unzip ../data/nturgbd_skeletons_s001_to_s017.zip -d BlockGCN/data/nturgbd_raw
+unzip ../data/nturgbd_skeletons_s018_to_s032.zip -d BlockGCN/data/nturgbd_raw
 unzip ../data/videos.zip -d VA-AFS
 ```
 
 전체 NTU60/NTU120 전처리를 하려면 `nturgbd_skeletons_s001_to_s017.zip`과 `nturgbd_skeletons_s018_to_s032.zip`이 모두 필요하다. 데이터 복원 후에는 BlockGCN README 순서대로 `data/ntu` 또는 `data/ntu120`의 전처리 스크립트를 실행해 `.npz`를 생성한다.
+
+주의: NTU zip 파일은 압축 내부에 `nturgb+d_skeletons/` 또는 `nturgb+d_skeletons120/` 폴더를 이미 포함한다. 따라서 `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons` 안에 다시 풀면 다음처럼 중첩된다.
+
+```text
+BlockGCN/data/nturgbd_raw/nturgb+d_skeletons/nturgb+d_skeletons/*.skeleton
+```
+
+이 구조는 BlockGCN 전처리 스크립트가 기대하는 구조가 아니다. 잘못 풀었다면 안쪽 파일을 바깥 폴더로 옮겨서 아래처럼 만든다.
+
+```text
+BlockGCN/data/nturgbd_raw/nturgb+d_skeletons/*.skeleton
+BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120/*.skeleton
+```
 
 ---
 
@@ -91,49 +104,72 @@ Online Score / Raw Beta / Motion Change Plot
 
 ## 2. 폴더 구조
 
+저장소에 기본으로 유지하는 구조는 코드, 모델 파일, 빈 출력 폴더, 입력 영상 폴더이다. 대용량 데이터와 실행 결과는 Git에 올리지 않는다.
+
 ```text
 VA-AFS/
 ├── videos/
-│   └── squat_01.mp4
+│   ├── .gitkeep
+│   └── *.avi / *.mp4          # 외부 데이터 복원 후 생기는 입력 영상
+├── models/
+│   └── pose_landmarker_lite.task
 ├── outputs/
+│   ├── .gitkeep
 │   ├── skeleton/
-│   │   ├── npy/
-│   │   │   └── squat_01_skeleton.npy
-│   │   └── csv/
-│   │       └── squat_01_skeleton.csv
 │   ├── previews/
-│   │   └── mp4/
-│   │       └── squat_01_preview.mp4
-│   └── threshold/
-│       ├── npy/
-│       │   └── squat_01_skeleton_tau0.9_k13_sampled.npy
-│       ├── plots/
-│       │   └── squat_01_skeleton_tau0.9_k13_selection.png
-│       └── selected_frames/
-│           └── squat_01_skeleton_tau0.9_k13/
-│               ├── squat_01_frame_000000.jpg
-│               └── squat_01_frame_000013.jpg
+│   ├── threshold/
+│   ├── blockgcn_npz/
+│   ├── blockgcn_configs/
+│   ├── blockgcn_train/
+│   └── blockgcn_acc/
 ├── extract_skeleton_mediapipe.py
 ├── va_afs_threshold.py
+├── prepare_ntu_subset.py
 ├── apply_va_afs_to_blockgcn_npz.py
+├── run_blockgcn_train.py
 ├── run_blockgcn_acc.py
+├── keep_best_blockgcn_checkpoint.py
 ├── constants.py
 └── README.md
 ```
 
+실행 후에는 입력 파일 이름에 맞춰 아래와 같은 결과가 생성된다. 예시는 `videos/ido_run.avi`를 처리한 경우이다.
+
+```text
+outputs/
+├── skeleton/
+│   ├── npy/
+│   │   └── ido_run_skeleton.npy
+│   └── csv/
+│       └── ido_run_skeleton.csv
+├── previews/
+│   └── mp4/
+│       └── ido_run_preview.mp4
+└── threshold/
+    ├── npy/
+    │   └── ido_run_skeleton_tau0.9_k13_sampled.npy
+    ├── plots/
+    │   └── ido_run_skeleton_tau0.9_k13_selection.png
+    └── selected_frames/
+        └── ido_run_skeleton_tau0.9_k13/
+            ├── ido_run_frame_000000.jpg
+            └── ido_run_frame_000013.jpg
+```
+
 출력은 기능과 확장자 기준으로 나뉜다.
 
-| 경로 | 의미 |
-| ---- | ---- |
-| `outputs/skeleton/npy/` | MediaPipe skeleton `.npy` |
-| `outputs/skeleton/csv/` | frame/joint 좌표 CSV |
-| `outputs/previews/mp4/` | pose landmark preview video |
-| `outputs/threshold/npy/` | VA-AFS가 선택한 skeleton sequence |
-| `outputs/threshold/plots/` | 선택 과정 시각화 plot |
-| `outputs/threshold/selected_frames/` | 실제 선택된 원본 frame 이미지 |
-| `outputs/blockgcn_npz/` | BlockGCN 평가용 VA-AFS 적용 NTU `.npz` |
-| `outputs/blockgcn_configs/` | BlockGCN 실행용 임시 config |
-| `outputs/blockgcn_acc/` | BlockGCN accuracy 로그와 score |
+| 경로                                 | 의미                                   |
+| ------------------------------------ | -------------------------------------- |
+| `outputs/skeleton/npy/`              | MediaPipe skeleton `.npy`              |
+| `outputs/skeleton/csv/`              | frame/joint 좌표 CSV                   |
+| `outputs/previews/mp4/`              | pose landmark preview video            |
+| `outputs/threshold/npy/`             | VA-AFS가 선택한 skeleton sequence      |
+| `outputs/threshold/plots/`           | 선택 과정 시각화 plot                  |
+| `outputs/threshold/selected_frames/` | 실제 선택된 원본 frame 이미지          |
+| `outputs/blockgcn_npz/`              | BlockGCN 평가용 VA-AFS 적용 NTU `.npz` |
+| `outputs/blockgcn_configs/`          | BlockGCN 실행용 임시 config            |
+| `outputs/blockgcn_train/`            | BlockGCN subset 학습 로그와 checkpoint |
+| `outputs/blockgcn_acc/`              | BlockGCN accuracy 로그와 score         |
 
 ### 2.1 대용량 데이터 복원
 
@@ -152,8 +188,8 @@ VA-AFS/videos/
 
 ```bash
 unzip ../data/all_sqe.zip -d BlockGCN/data/NW-UCLA
-unzip ../data/nturgbd_skeletons_s001_to_s017.zip -d BlockGCN/data/nturgbd_raw/nturgb+d_skeletons
-unzip ../data/nturgbd_skeletons_s018_to_s032.zip -d BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120
+unzip ../data/nturgbd_skeletons_s001_to_s017.zip -d BlockGCN/data/nturgbd_raw
+unzip ../data/nturgbd_skeletons_s018_to_s032.zip -d BlockGCN/data/nturgbd_raw
 unzip ../data/videos.zip -d VA-AFS
 ```
 
@@ -228,6 +264,7 @@ numpy
 pandas
 matplotlib
 tqdm
+PyYAML
 ```
 
 설치:
@@ -240,23 +277,23 @@ python -m pip install -r requirements.txt
 `requirements.txt`가 아직 없다면 직접 설치한다.
 
 ```bash
-python -m pip install opencv-python mediapipe numpy pandas matplotlib tqdm
+python -m pip install opencv-python mediapipe numpy pandas matplotlib tqdm PyYAML
 ```
 
 설치 확인:
 
 ```bash
-python -c "import cv2, mediapipe, numpy, pandas, matplotlib, tqdm; print('ok')"
+python -c "import cv2, mediapipe, numpy, pandas, matplotlib, tqdm, yaml; print('ok')"
 ```
 
 ---
 
 ## 5. 영상 준비
 
-`videos/` 폴더에 테스트 영상을 넣는다.
+`videos/` 폴더에 테스트 영상을 넣는다. 아래는 외부 데이터 복원 후 존재하는 `ido_run.avi`를 사용하는 예시이다. 다른 영상을 쓰면 파일명만 바꾼다.
 
 ```text
-videos/squat_01.mp4
+videos/ido_run.avi
 ```
 
 촬영 기준:
@@ -287,29 +324,29 @@ jump
 현재 위치가 `VA-AFS/` 폴더라면:
 
 ```bash
-python extract_skeleton_mediapipe.py --video videos/squat_01.mp4
+python extract_skeleton_mediapipe.py --video videos/ido_run.avi
 ```
 
 다른 위치에서 실행한다면 전체 경로를 사용한다.
 
 ```bash
 python /path/to/VA-AFS/extract_skeleton_mediapipe.py \
-  --video /path/to/VA-AFS/videos/squat_01.mp4
+  --video /path/to/VA-AFS/videos/ido_run.avi
 ```
 
 출력 파일:
 
 ```text
-outputs/skeleton/npy/squat_01_skeleton.npy
-outputs/skeleton/csv/squat_01_skeleton.csv
-outputs/previews/mp4/squat_01_preview.mp4
+outputs/skeleton/npy/ido_run_skeleton.npy
+outputs/skeleton/csv/ido_run_skeleton.csv
+outputs/previews/mp4/ido_run_preview.mp4
 ```
 
-| 파일 | 의미 |
-| ---- | ---- |
-| `*_skeleton.npy` | VA-AFS에 사용할 skeleton numpy 파일 |
-| `*_skeleton.csv` | frame, joint, x, y, visibility를 저장한 CSV |
-| `*_preview.mp4` | MediaPipe pose landmark가 그려진 확인용 영상 |
+| 파일             | 의미                                         |
+| ---------------- | -------------------------------------------- |
+| `*_skeleton.npy` | VA-AFS에 사용할 skeleton numpy 파일          |
+| `*_skeleton.csv` | frame, joint, x, y, visibility를 저장한 CSV  |
+| `*_preview.mp4`  | MediaPipe pose landmark가 그려진 확인용 영상 |
 
 ---
 
@@ -321,11 +358,11 @@ MediaPipe Pose 기준:
 skeleton.shape = (T, 33, 3)
 ```
 
-| 축 | 의미 |
-| -- | ---- |
-| `T` | 영상 frame 수 |
+| 축   | 의미                         |
+| ---- | ---------------------------- |
+| `T`  | 영상 frame 수                |
 | `33` | MediaPipe Pose landmark 개수 |
-| `3` | `x`, `y`, `visibility` |
+| `3`  | `x`, `y`, `visibility`       |
 
 VA-AFS는 좌표만 사용한다.
 
@@ -347,29 +384,29 @@ skeleton_xy.shape = (T, 33, 2)
 
 ```bash
 python va_afs_threshold.py \
-  --npy outputs/skeleton/npy/squat_01_skeleton.npy
+  --npy outputs/skeleton/npy/ido_run_skeleton.npy
 ```
 
 옵션을 직접 지정하는 예시:
 
 ```bash
 python va_afs_threshold.py \
-  --npy outputs/skeleton/npy/squat_01_skeleton.npy \
-  --video videos/squat_01.mp4 \
+  --npy outputs/skeleton/npy/ido_run_skeleton.npy \
+  --video videos/ido_run.avi \
   --tau 0.9 \
   --k_max 13 \
   --window_size 13
 ```
 
-| 인자 | 의미 | 기본값 |
-| ---- | ---- | -----: |
-| `--npy` | MediaPipe로 추출한 skeleton `.npy` 경로 | 필수 |
-| `--video` | 선택 frame 이미지를 저장할 원본 영상 경로 | 자동 탐색 |
-| `--tau` | 0~1 online score threshold | `TAU[-1] = 0.9` |
-| `--k_max` | 최대 연속 skip 허용 frame 수 | `K_MAX[-1] = 13` |
+| 인자            | 의미                                       |                 기본값 |
+| --------------- | ------------------------------------------ | ---------------------: |
+| `--npy`         | MediaPipe로 추출한 skeleton `.npy` 경로    |                   필수 |
+| `--video`       | 선택 frame 이미지를 저장할 원본 영상 경로  |              자동 탐색 |
+| `--tau`         | 0~1 online score threshold                 |        `TAU[-1] = 0.9` |
+| `--k_max`       | 최대 연속 skip 허용 frame 수               |       `K_MAX[-1] = 13` |
 | `--window_size` | motion feature 계산에 사용할 최근 frame 수 | `WINDOW_SIZE[-1] = 13` |
 
-`--video`를 생략하면 `.npy` 이름에서 `_skeleton`을 제거한 뒤 `videos/` 아래에서 같은 이름의 영상을 찾는다. 예를 들어 `squat_01_skeleton.npy`는 `videos/squat_01.mp4`, `videos/squat_01.avi` 등을 탐색한다.
+`--video`를 생략하면 `.npy` 이름에서 `_skeleton`을 제거한 뒤 `videos/` 아래에서 같은 이름의 영상을 찾는다. 예를 들어 `ido_run_skeleton.npy`는 `videos/ido_run.avi`, `videos/ido_run.mp4` 등을 탐색한다.
 
 ---
 
@@ -377,10 +414,10 @@ python va_afs_threshold.py \
 
 `window_size`는 두 군데에서 쓰인다.
 
-| 용도 | 설명 |
-| ---- | ---- |
+| 용도                  | 설명                                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Motion feature window | 현재 frame의 displacement, velocity, acceleration, window 내부 표준편차를 계산할 때 최근 최대 `window_size`개 frame을 참조한다. |
-| Warmup length | online beta 평균/표준편차가 안정되기 전까지 처음 `window_size`개 frame을 강제로 선택한다. |
+| Warmup length         | online beta 평균/표준편차가 안정되기 전까지 처음 `window_size`개 frame을 강제로 선택한다.                                       |
 
 `window_size = 13`이면 매 frame마다 최근 최대 13개의 frame을 보고 motion feature를 계산한다.
 
@@ -391,14 +428,14 @@ window_size = 13
 
 | 현재 frame t | 참조 window |
 | -----------: | ----------- |
-| 0 | 0 |
-| 1 | 0~1 |
-| 2 | 0~2 |
-| 12 | 0~12 |
-| 13 | 1~13 |
-| 14 | 2~14 |
-| ... | ... |
-| 59 | 47~59 |
+|            0 | 0           |
+|            1 | 0~1         |
+|            2 | 0~2         |
+|           12 | 0~12        |
+|           13 | 1~13        |
+|           14 | 2~14        |
+|          ... | ...         |
+|           59 | 47~59       |
 
 초기에는 online beta 통계가 불안정하므로 **처음 `window_size`개의 frame은 warmup으로 강제 선택**한다.
 
@@ -534,18 +571,18 @@ Original shape: (42, 33, 2)
 Sampled shape: (15, 33, 2)
 Processed frame ratio: 0.357
 Selected indices: [ 0  1  2 ... 12 25 38] ...
-Saved sampled skeleton: outputs/threshold/npy/squat_01_skeleton_tau0.9_k13_sampled.npy
-Saved plot: outputs/threshold/plots/squat_01_skeleton_tau0.9_k13_selection.png
+Saved sampled skeleton: outputs/threshold/npy/ido_run_skeleton_tau0.9_k13_sampled.npy
+Saved plot: outputs/threshold/plots/ido_run_skeleton_tau0.9_k13_selection.png
 Saved selected frame images: 15 files
-Selected frame image dir: outputs/threshold/selected_frames/squat_01_skeleton_tau0.9_k13
+Selected frame image dir: outputs/threshold/selected_frames/ido_run_skeleton_tau0.9_k13
 ```
 
-| 출력 | 의미 |
-| ---- | ---- |
-| `Original shape` | 원본 skeleton shape |
-| `Sampled shape` | 선택된 skeleton shape |
-| `Processed frame ratio` | 전체 frame 중 선택된 frame 비율 |
-| `Selected indices` | 선택된 frame 번호 |
+| 출력                          | 의미                                           |
+| ----------------------------- | ---------------------------------------------- |
+| `Original shape`              | 원본 skeleton shape                            |
+| `Sampled shape`               | 선택된 skeleton shape                          |
+| `Processed frame ratio`       | 전체 frame 중 선택된 frame 비율                |
+| `Selected indices`            | 선택된 frame 번호                              |
 | `Saved selected frame images` | 실제 원본 영상에서 저장한 선택 frame 이미지 수 |
 
 ---
@@ -555,16 +592,16 @@ Selected frame image dir: outputs/threshold/selected_frames/squat_01_skeleton_ta
 예시:
 
 ```text
-outputs/threshold/npy/squat_01_skeleton_tau0.9_k13_sampled.npy
-outputs/threshold/plots/squat_01_skeleton_tau0.9_k13_selection.png
-outputs/threshold/selected_frames/squat_01_skeleton_tau0.9_k13/squat_01_frame_000000.jpg
+outputs/threshold/npy/ido_run_skeleton_tau0.9_k13_sampled.npy
+outputs/threshold/plots/ido_run_skeleton_tau0.9_k13_selection.png
+outputs/threshold/selected_frames/ido_run_skeleton_tau0.9_k13/ido_run_frame_000000.jpg
 ```
 
-| 파일 | 의미 |
-| ---- | ---- |
-| `*_sampled.npy` | 선택된 skeleton sequence |
+| 파일              | 의미                                                     |
+| ----------------- | -------------------------------------------------------- |
+| `*_sampled.npy`   | 선택된 skeleton sequence                                 |
 | `*_selection.png` | online score, raw beta, motion change, 선택 frame 시각화 |
-| `*_frame_*.jpg` | 실제 선택된 원본 frame 이미지 |
+| `*_frame_*.jpg`   | 실제 선택된 원본 frame 이미지                            |
 
 `*_selection.png`에서 확인할 것:
 
@@ -583,17 +620,17 @@ outputs/threshold/selected_frames/squat_01_skeleton_tau0.9_k13/squat_01_frame_00
 `tau`는 이제 raw `β_t`가 아니라 0~1 online score에 적용된다.
 
 ```bash
-python va_afs_threshold.py --npy outputs/skeleton/npy/squat_01_skeleton.npy --tau 0.5 --k_max 13 --window_size 13
-python va_afs_threshold.py --npy outputs/skeleton/npy/squat_01_skeleton.npy --tau 0.7 --k_max 13 --window_size 13
-python va_afs_threshold.py --npy outputs/skeleton/npy/squat_01_skeleton.npy --tau 0.9 --k_max 13 --window_size 13
+python va_afs_threshold.py --npy outputs/skeleton/npy/ido_run_skeleton.npy --tau 0.5 --k_max 13 --window_size 13
+python va_afs_threshold.py --npy outputs/skeleton/npy/ido_run_skeleton.npy --tau 0.7 --k_max 13 --window_size 13
+python va_afs_threshold.py --npy outputs/skeleton/npy/ido_run_skeleton.npy --tau 0.9 --k_max 13 --window_size 13
 ```
 
 `k_max`도 바꿔본다.
 
 ```bash
-python va_afs_threshold.py --npy outputs/skeleton/npy/squat_01_skeleton.npy --tau 0.9 --k_max 5 --window_size 13
-python va_afs_threshold.py --npy outputs/skeleton/npy/squat_01_skeleton.npy --tau 0.9 --k_max 8 --window_size 13
-python va_afs_threshold.py --npy outputs/skeleton/npy/squat_01_skeleton.npy --tau 0.9 --k_max 13 --window_size 13
+python va_afs_threshold.py --npy outputs/skeleton/npy/ido_run_skeleton.npy --tau 0.9 --k_max 5 --window_size 13
+python va_afs_threshold.py --npy outputs/skeleton/npy/ido_run_skeleton.npy --tau 0.9 --k_max 8 --window_size 13
+python va_afs_threshold.py --npy outputs/skeleton/npy/ido_run_skeleton.npy --tau 0.9 --k_max 13 --window_size 13
 ```
 
 예상 경향:
@@ -617,9 +654,9 @@ window_size 증가 → warmup 선택 frame 증가, motion feature가 더 긴 구
 \frac{T'}{T}
 ```
 
-| 기호 | 의미 |
-| ---- | ---- |
-| \(T\) | 원본 frame 수 |
+| 기호   | 의미            |
+| ------ | --------------- |
+| \(T\)  | 원본 frame 수   |
 | \(T'\) | 선택된 frame 수 |
 
 ### Frame Reduction
@@ -647,6 +684,17 @@ window_size 증가 → warmup 선택 frame 증가, motion feature가 더 긴 구
 
 ## 15. BlockGCN으로 accuracy 확인
 
+BlockGCN accuracy 실험에서는 원본 영상이나 MediaPipe `.npy`를 직접 쓰지 않는다. 입력은 BlockGCN 전처리로 만든 NTU `.npz`이다.
+
+두 실행 경로를 구분해야 한다.
+
+| 목적 | 입력 파일 | 실행 스크립트 | 결과 |
+| ---- | --------- | ------------- | ---- |
+| 직접 촬영한 영상에서 VA-AFS 동작 확인 | `outputs/skeleton/npy/*_skeleton.npy` | `va_afs_threshold.py` | sampled `.npy`, 선택 frame 이미지, selection plot |
+| BlockGCN accuracy 비교 | `BlockGCN/data/ntu_subset_200/NTU60_CS.npz` | `apply_va_afs_to_blockgcn_npz.py` | VA-AFS 적용 BlockGCN `.npz` |
+
+`va_afs_threshold.py`는 `.npy`를 받는 단일 sequence 확인용 CLI이다. 반면 `apply_va_afs_to_blockgcn_npz.py`는 `.npz` 안의 `x_train`, `x_test` sequence를 하나씩 꺼내서 내부적으로 같은 `va_afs_threshold_sampling()` 함수를 호출한다.
+
 BlockGCN은 NTU `.npz`를 다음 shape로 읽는다.
 
 ```python
@@ -656,17 +704,262 @@ x_test.shape = (N, T, 150)
 
 여기서 `150 = M(2) * V(25) * C(3)`이다. VA-AFS를 BlockGCN 앞단에 붙일 때는 선택된 frame만 앞쪽에 채우고 나머지는 zero padding으로 둔다. 이렇게 해야 BlockGCN feeder가 기존 방식대로 valid frame 수를 계산하고, 최종 입력 길이 64로 resize할 수 있다.
 
+따라서 `.skeleton` 원본 파일을 직접 줄이는 방식은 권장하지 않는다.
+
+```text
+권장하지 않음: raw .skeleton 파일에서 frame line을 직접 삭제
+권장 방식    : raw .skeleton -> BlockGCN .npz 생성 -> .npz sequence에서 VA-AFS 적용
+```
+
 BlockGCN 실행에는 별도 의존성이 필요하다.
 
 ```bash
-cd ../BlockGCN
-pip install -e torchlight
-pip install torch tensorboardX scikit-learn pyyaml
+python -m pip install torch tensorboardX scikit-learn PyYAML einops torch-topological
 ```
 
-### 15.1 BlockGCN 원본 데이터 생성
+이 프로젝트의 `run_blockgcn_train.py`와 `run_blockgcn_acc.py`는 subprocess 실행 시 `BlockGCN/torchlight`를 `PYTHONPATH`에 자동으로 넣는다. 따라서 보통 `pip install -e torchlight`를 따로 하지 않아도 된다.
 
-데이터셋 다운로드가 끝나면 BlockGCN README 순서대로 NTU `.npz`를 만든다.
+### 15.1 200개 subset 필수 체크리스트
+
+200개 subset만 사용할 경우 아래 단계만 실행하면 된다. 전체 NTU60 `.npz`를 만드는 15.6은 건너뛴다.
+
+```text
+[ ] 1. NTU raw skeleton zip을 BlockGCN/data/nturgbd_raw/ 아래에 압축 해제
+[ ] 2. 200개 subset 전처리 폴더 생성
+[ ] 3. subset 폴더에서 raw -> denoised -> npz 전처리 실행
+[ ] 4. subset 원본 npz로 BlockGCN 학습
+[ ] 5. subset test split에 VA-AFS 적용 npz 생성
+[ ] 6. 같은 checkpoint로 원본 subset과 VA-AFS subset 평가
+```
+
+필수 산출물:
+
+```text
+BlockGCN/data/ntu_subset_200/NTU60_CS.npz
+outputs/blockgcn_train/ntu_subset_200_original/runs-*.pt
+outputs/blockgcn_npz/NTU60_CS_subset200_vaafs_test_only.npz
+```
+
+선택 산출물:
+
+```text
+BlockGCN/data/ntu/NTU60_CS.npz
+```
+
+위 선택 산출물은 전체 NTU60 benchmark를 돌릴 때만 필요하다.
+
+### 15.2 200개 subset 생성
+
+`VA-AFS/` 폴더에서 실행한다.
+
+```bash
+python prepare_ntu_subset.py \
+  --sample_size 200 \
+  --test_ratio 0.2 \
+  --seed 1 \
+  --output_dir ../BlockGCN/data/ntu_subset_200 \
+  --force
+```
+
+이 스크립트는 원본 NTU60 `statistics/*.txt`에서 CS train/test performer pool을 기준으로 랜덤 subset을 뽑고, 별도 전처리 폴더를 만든다.
+
+```text
+BlockGCN/data/ntu_subset_200/
+├── statistics/
+├── get_raw_skes_data.py
+├── get_raw_denoised_data.py
+└── seq_transformation.py
+```
+
+그 다음 subset 폴더에서 BlockGCN 전처리를 실행한다.
+
+```bash
+cd ../BlockGCN/data/ntu_subset_200
+python get_raw_skes_data.py
+python get_raw_denoised_data.py
+python seq_transformation.py
+```
+
+생성 결과:
+
+```text
+../BlockGCN/data/ntu_subset_200/NTU60_CS.npz
+../BlockGCN/data/ntu_subset_200/NTU60_CV.npz
+```
+
+작은 subset은 빠른 동작 확인용이다. 샘플 수가 작을수록 accuracy는 통계적으로 불안정하고, 클래스 분포도 전체 NTU60을 대표하지 않는다.
+
+### 15.3 Subset 원본 학습
+
+subset `.npz`가 생기면 작은 epoch로 먼저 학습이 되는지 확인한다.
+
+```bash
+cd ../../../VA-AFS
+
+python run_blockgcn_train.py \
+  --data_npz ../BlockGCN/data/ntu_subset_200/NTU60_CS.npz \
+  --work_dir outputs/blockgcn_train/ntu_subset_200_original \
+  --num_epoch 5 \
+  --batch_size 8 \
+  --test_batch_size 8 \
+  --num_worker 1 \
+  --save_epoch 0 \
+  --keep_best_only
+```
+
+주의:
+
+```text
+BlockGCN train loader는 drop_last=True를 사용한다.
+따라서 train sample 수가 batch_size보다 작으면 학습 batch가 0개가 된다.
+작은 subset에서는 --batch_size를 4 또는 8처럼 작게 둔다.
+BlockGCN 원본 save_epoch 기본값은 10이라 1~5 epoch 짧은 실험에서는 checkpoint가 저장되지 않는다.
+이 wrapper는 기본값으로 --save_epoch 0을 사용해서 짧은 subset 학습에서도 checkpoint를 저장한다.
+`--keep_best_only`를 붙이면 학습 완료 후 best epoch checkpoint만 남기고 나머지 `.pt` 파일은 삭제한다.
+```
+
+학습이 끝나면 `outputs/blockgcn_train/ntu_subset_200_original/` 아래에 checkpoint가 저장된다.
+
+```text
+outputs/blockgcn_train/ntu_subset_200_original/runs-*.pt
+```
+
+이 checkpoint를 원본 subset과 VA-AFS subset 평가에 동일하게 사용한다.
+이미 여러 checkpoint가 쌓여 있으면 다음 명령으로 best checkpoint만 남길 수 있다.
+
+```bash
+python keep_best_blockgcn_checkpoint.py \
+  outputs/blockgcn_train/ntu_subset_200_original
+```
+
+### 15.4 200개 subset에 VA-AFS 적용
+
+`VA-AFS/` 폴더에서 실행한다. 기본 실험은 train split은 그대로 두고 test split만 VA-AFS로 줄이는 것이다.
+
+```bash
+python apply_va_afs_to_blockgcn_npz.py \
+  --input_npz ../BlockGCN/data/ntu_subset_200/NTU60_CS.npz \
+  --output_npz outputs/blockgcn_npz/NTU60_CS_subset200_vaafs_test_only.npz \
+  --tau 0.9 \
+  --k_max 13 \
+  --window_size 13 \
+  --splits test
+```
+
+출력 파일에는 기존 `x_train`, `y_train`, `x_test`, `y_test`와 함께 다음 metadata가 추가된다.
+
+```text
+test_original_counts
+test_selected_counts
+test_processed_frame_ratio
+test_frame_reduction_ratio
+vaafs_tau
+vaafs_k_max
+vaafs_window_size
+```
+
+`test_processed_frame_ratio`는 test sequence에서 실제로 남긴 frame 비율이다.
+실행하면 콘솔과 `*.summary.txt`에 다음과 같은 요약도 저장된다.
+
+```text
+[test] VA-AFS frame selection summary
+  samples                 : 40
+  non-empty samples       : 40
+  original frames total   : 3636
+  selected frames total   : 1046
+  processed frame ratio   : 0.288 (28.8%)
+  frame reduction         : 0.712 (71.2%)
+  original frame count    : mean=90.900, min=52.000, p25=66.750, median=78.500, p75=103.000, max=239.000
+  selected frame count    : mean=26.150, min=15.000, p25=19.750, median=24.000, p75=30.000, max=70.000
+  per-sample ratio        : mean=0.291, min=0.224, p25=0.275, median=0.290, p75=0.307, max=0.353
+  ratio histogram         :
+    0.0-0.2:    0
+    0.2-0.4:   40 ########################
+    0.4-0.6:    0
+    0.6-0.8:    0
+    0.8-1.0:    0
+  first 8 samples      : 30/119, 24/75, 30/101, 22/80, 30/103, 15/52, 20/67, 20/60
+```
+
+요약 파일 예시:
+
+```text
+outputs/blockgcn_npz/NTU60_CS_subset200_vaafs_test_only.summary.txt
+```
+
+### 15.5 200개 subset accuracy 비교
+
+먼저 checkpoint 파일명을 확인한다.
+
+```bash
+ls outputs/blockgcn_train/ntu_subset_200_original/*.pt
+```
+
+원본 subset 평가:
+
+```bash
+python run_blockgcn_acc.py \
+  --data_npz ../BlockGCN/data/ntu_subset_200/NTU60_CS.npz \
+  --weights outputs/blockgcn_train/ntu_subset_200_original/runs-*.pt \
+  --test_batch_size 8 \
+  --num_worker 1 \
+  --save_score
+```
+
+VA-AFS test-only subset 평가:
+
+```bash
+python run_blockgcn_acc.py \
+  --data_npz outputs/blockgcn_npz/NTU60_CS_subset200_vaafs_test_only.npz \
+  --weights outputs/blockgcn_train/ntu_subset_200_original/runs-*.pt \
+  --test_batch_size 8 \
+  --num_worker 1 \
+  --save_score
+```
+
+봐야 할 값:
+
+```text
+원본 subset acc
+VA-AFS sampled subset acc
+test_processed_frame_ratio
+```
+
+실행 전 명령만 확인하려면 `--dry_run`을 붙인다.
+
+```bash
+python run_blockgcn_acc.py \
+  --data_npz outputs/blockgcn_npz/NTU60_CS_subset200_vaafs_test_only.npz \
+  --weights outputs/blockgcn_train/ntu_subset_200_original/runs-*.pt \
+  --dry_run
+```
+
+Device는 기본적으로 자동 선택된다.
+
+```text
+CUDA 가능 → --device 0
+Apple Silicon MPS 가능 → --device mps
+그 외 → --device cpu
+```
+
+Mac에서 MPS 문제가 생기면 CPU로 강제한다.
+
+```bash
+python run_blockgcn_train.py \
+  --data_npz ../BlockGCN/data/ntu_subset_200/NTU60_CS.npz \
+  --work_dir outputs/blockgcn_train/ntu_subset_200_original \
+  --num_epoch 5 \
+  --batch_size 8 \
+  --test_batch_size 8 \
+  --num_worker 1 \
+  --device cpu \
+  --save_epoch 0 \
+  --keep_best_only
+```
+
+### 15.6 선택: 전체 NTU60 benchmark
+
+전체 benchmark를 돌릴 수 있는 환경이면 BlockGCN README 순서대로 전체 NTU `.npz`를 만든다. 200개 subset 실험만 할 때는 이 단계가 필요 없다.
 
 ```bash
 cd ../BlockGCN/data/ntu
@@ -682,119 +975,16 @@ python seq_transformation.py
 ../BlockGCN/data/ntu/NTU60_CV.npz
 ```
 
-### 15.2 VA-AFS 적용 `.npz` 생성
-
-`VA-AFS/` 폴더에서 실행한다.
-
-```bash
-python apply_va_afs_to_blockgcn_npz.py \
-  --input_npz ../BlockGCN/data/ntu/NTU60_CS.npz \
-  --tau 0.9 \
-  --k_max 13 \
-  --window_size 13
-```
-
-출력 예시:
-
-```text
-outputs/blockgcn_npz/NTU60_CS_vaafs_tau0.9_k13_w13.npz
-```
-
-이 파일에는 기존 `x_train`, `y_train`, `x_test`, `y_test`와 함께 다음 metadata가 추가된다.
-
-```text
-train_original_counts
-train_selected_counts
-train_processed_frame_ratio
-test_original_counts
-test_selected_counts
-test_processed_frame_ratio
-vaafs_tau
-vaafs_k_max
-vaafs_window_size
-```
-
-test split만 줄이고 train split은 그대로 두고 싶으면 다음처럼 실행한다.
+전체 NTU60에 VA-AFS를 적용하는 예시:
 
 ```bash
 python apply_va_afs_to_blockgcn_npz.py \
   --input_npz ../BlockGCN/data/ntu/NTU60_CS.npz \
   --output_npz outputs/blockgcn_npz/NTU60_CS_vaafs_test_only.npz \
+  --tau 0.9 \
+  --k_max 13 \
+  --window_size 13 \
   --splits test
-```
-
-### 15.3 BlockGCN accuracy 실행
-
-BlockGCN pretrained weight 또는 직접 학습한 checkpoint가 필요하다. 준비되면 `VA-AFS/` 폴더에서 다음처럼 실행한다.
-
-```bash
-python run_blockgcn_acc.py \
-  --data_npz outputs/blockgcn_npz/NTU60_CS_vaafs_tau0.9_k13_w13.npz \
-  --weights ../BlockGCN/work_dir/ntu60/csub/your_checkpoint.pt \
-  --config config/nturgbd-cross-subject/default.yaml \
-  --device 0 \
-  --test_batch_size 64 \
-  --num_worker 4 \
-  --save_score
-```
-
-wrapper가 하는 일:
-
-```text
-1. BlockGCN config를 읽는다.
-2. test_feeder_args.data_path를 VA-AFS 적용 .npz로 바꾼 임시 config를 만든다.
-3. ../BlockGCN/main.py --phase test를 실행한다.
-4. stdout의 Accuracy 값을 읽어 Top-1 accuracy를 다시 출력한다.
-```
-
-실행 전 명령만 확인하려면:
-
-```bash
-python run_blockgcn_acc.py \
-  --data_npz outputs/blockgcn_npz/NTU60_CS_vaafs_tau0.9_k13_w13.npz \
-  --weights ../BlockGCN/work_dir/ntu60/csub/your_checkpoint.pt \
-  --dry_run
-```
-
-비교 실험은 같은 checkpoint로 원본 `.npz`와 VA-AFS `.npz`를 각각 평가한다.
-
-```text
-Baseline acc: BlockGCN + original NTU60_CS.npz
-VA-AFS acc  : BlockGCN + NTU60_CS_vaafs_tau*_k*_w*.npz
-```
-
-Device는 기본적으로 자동 선택된다.
-
-```text
-CUDA 가능 → --device 0
-Apple Silicon MPS 가능 → --device mps
-그 외 → --device cpu
-```
-
-따라서 Colab GPU 런타임에서는 `--device`를 생략해도 CUDA device 0으로 실행된다. 직접 지정하고 싶으면 다음처럼 넘긴다.
-
-```bash
-python run_blockgcn_acc.py \
-  --data_npz outputs/blockgcn_npz/NTU60_CS_vaafs_tau0.9_k13_w13.npz \
-  --weights ../BlockGCN/work_dir/ntu60/csub/your_checkpoint.pt \
-  --device 0
-```
-
-Mac에서 MPS 문제가 생기면 CPU로 강제한다.
-
-```bash
-python run_blockgcn_acc.py \
-  --data_npz outputs/blockgcn_npz/NTU60_CS_vaafs_tau0.9_k13_w13.npz \
-  --weights ../BlockGCN/work_dir/ntu60/csub/your_checkpoint.pt \
-  --device cpu
-```
-
-주의:
-
-```text
-CPU/MPS는 CUDA보다 느리다. 전체 NTU accuracy 평가는 오래 걸릴 수 있다.
-MPS에서 지원되지 않는 PyTorch 연산이 있으면 --device cpu로 다시 실행한다.
-최종 대규모 실험은 Colab, 연구실 GPU 서버, CUDA 가능한 데스크톱에서 돌리는 것이 현실적이다.
 ```
 
 ---
@@ -835,6 +1025,116 @@ python -m pip install mediapipe
 python -c "import mediapipe as mp; print(mp.__version__)"
 ```
 
+### `ModuleNotFoundError: No module named 'yaml'`
+
+원인:
+
+```text
+PyYAML이 설치되지 않았거나, 현재 터미널의 python이 가상환경 python이 아님
+```
+
+해결:
+
+```bash
+python -m pip install PyYAML
+python -c "import yaml; print(yaml.__version__)"
+```
+
+`.venv`가 켜져 있는데도 계속 실패하면 `python` alias를 확인한다.
+
+```bash
+which python
+python -c "import sys; print(sys.executable)"
+```
+
+정상 경로는 `src/.venv/bin/python`이어야 한다. 만약 Homebrew Python 같은 다른 경로가 나오면 현재 셸에서 alias를 해제한다.
+
+```bash
+unalias python
+hash -r
+```
+
+### `ModuleNotFoundError: No module named 'einops'`
+
+원인:
+
+```text
+BlockGCN/model/BlockGCN.py가 einops를 사용하지만 현재 가상환경에 설치되어 있지 않음
+```
+
+해결:
+
+```bash
+python -m pip install einops
+```
+
+### `ModuleNotFoundError: No module named 'torch_topological'`
+
+원인:
+
+```text
+BlockGCN/model/BlockGCN.py가 torch_topological을 사용하지만 현재 가상환경에 설치되어 있지 않음
+```
+
+해결:
+
+```bash
+python -m pip install torch-topological
+```
+
+### `ImportError: cannot import name 'DictAction' from 'torchlight'`
+
+원인:
+
+```text
+BlockGCN/torchlight 폴더 구조 때문에 Python이 실제 torchlight package 대신 바깥 namespace 폴더를 먼저 잡음
+```
+
+해결:
+
+```text
+run_blockgcn_train.py와 run_blockgcn_acc.py는 subprocess 실행 시 BlockGCN/torchlight를 PYTHONPATH에 자동 추가한다.
+따라서 이 wrapper를 통해 실행하면 된다.
+BlockGCN/main.py를 직접 실행할 때만 PYTHONPATH를 직접 지정한다.
+```
+
+직접 실행 예시:
+
+```bash
+PYTHONPATH=./torchlight python main.py --phase train --config path/to/config.yaml
+```
+
+### MPS에서 학습이 멈추거나 연산 에러가 나는 경우
+
+Apple Silicon에서는 자동으로 `--device mps`가 선택될 수 있다. MPS에서 지원되지 않는 연산이 나오면 CPU로 강제한다.
+
+```bash
+python run_blockgcn_train.py \
+  --data_npz ../BlockGCN/data/ntu_subset_200/NTU60_CS.npz \
+  --work_dir outputs/blockgcn_train/ntu_subset_200_original \
+  --num_epoch 5 \
+  --batch_size 8 \
+  --test_batch_size 8 \
+  --num_worker 1 \
+  --device cpu
+```
+
+### `TypeError: only 0-dimensional arrays can be converted to Python scalars`
+
+원인:
+
+```text
+BlockGCN/feeders/tools.py의 valid_crop_resize()에서 p_interval=[0.5, 1] 구간 샘플링 결과를 길이 1짜리 NumPy array로 만든 뒤 int(...) 변환을 시도함
+```
+
+해결:
+
+```text
+p = float(np.random.uniform(p_interval[0], p_interval[1]))
+```
+
+이 프로젝트의 `BlockGCN/feeders/tools.py`는 위 방식으로 수정되어 있다. 새 BlockGCN 원본 코드로 덮어썼다면 같은 패치를 다시 적용해야 한다.
+
 ### 영상 파일을 못 찾는 경우
 
 실행 위치와 영상 경로를 확인한다.
@@ -848,7 +1148,7 @@ ls videos
 
 ```bash
 python extract_skeleton_mediapipe.py \
-  --video "/Users/minsukim/.../VA-AFS/videos/squat_01.mp4"
+  --video "/Users/minsukim/.../VA-AFS/videos/ido_run.avi"
 ```
 
 ---

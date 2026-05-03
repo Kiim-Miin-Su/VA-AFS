@@ -5,8 +5,14 @@ import os.path as osp
 import numpy as np
 import pickle
 import logging
-import h5py
-from sklearn.model_selection import train_test_split
+try:
+    import h5py
+except ImportError:
+    h5py = None
+try:
+    from sklearn.model_selection import train_test_split
+except ImportError:
+    train_test_split = None
 
 root_path = './'
 stat_path = osp.join(root_path, 'statistics')
@@ -229,7 +235,7 @@ if __name__ == '__main__':
     label = np.loadtxt(label_file, dtype=np.int_) - 1  # action label: 0~59
 
     frames_cnt = np.loadtxt(frames_file, dtype=np.int_)  # frames_cnt
-    skes_name = np.loadtxt(skes_name_file, dtype=np.string_)
+    skes_name = np.loadtxt(skes_name_file, dtype=str)
 
     with open(raw_skes_joints_pkl, 'rb') as fr:
         skes_joints = pickle.load(fr)  # a list

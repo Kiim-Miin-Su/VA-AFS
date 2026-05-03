@@ -7,13 +7,19 @@ import time
 import pickle
 from collections import OrderedDict
 import yaml
-import h5py
+try:
+    import h5py
+except ImportError:
+    h5py = None
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
-from torchpack.runner.hooks import PaviLogger
+try:
+    from torchpack.runner.hooks import PaviLogger
+except ImportError:
+    PaviLogger = None
 
 
 class IO():
@@ -28,6 +34,8 @@ class IO():
         self.model_text = ''
 
     def log(self, *args, **kwargs):
+        if PaviLogger is None:
+            return
         try:
             if self.pavi_logger is None:
                 url = 'http://pavi.parrotsdnn.org/log'
@@ -91,6 +99,8 @@ class IO():
             pickle.dump(result, f)
 
     def save_h5(self, result, filename, append=False):
+        if h5py is None:
+            raise ImportError('h5py is required to save h5 files.')
         with h5py.File(f'{self.work_dir}/{filename}', 'a' if append else 'w') as f:
             for k in result.keys():
                 f[k] = result[k]

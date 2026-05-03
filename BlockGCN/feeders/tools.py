@@ -14,13 +14,16 @@ def valid_crop_resize(data_numpy,valid_frame_num,p_interval,window):
     valid_size = end - begin
 
     #crop
+    if isinstance(p_interval, (int, float)):
+        p_interval = [float(p_interval)]
+
     if len(p_interval) == 1:
-        p = p_interval[0]
+        p = float(p_interval[0])
         bias = int((1-p) * valid_size/2)
         data = data_numpy[:, begin+bias:end-bias, :, :]# center_crop
         cropped_length = data.shape[1]
     else:
-        p = np.random.rand(1)*(p_interval[1]-p_interval[0])+p_interval[0]
+        p = float(np.random.uniform(p_interval[0], p_interval[1]))
         cropped_length = np.minimum(np.maximum(int(np.floor(valid_size*p)),64), valid_size)# constraint cropped_length lower bound as 64
         bias = np.random.randint(0,valid_size-cropped_length+1)
         data = data_numpy[:, begin+bias:begin+bias+cropped_length, :, :]

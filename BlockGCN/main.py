@@ -339,15 +339,17 @@ class Processor():
         Feeder = import_class(self.arg.feeder)
         self.data_loader = dict()
         if self.arg.phase == 'train':
-            self.data_loader['train'] = torch.utils.data.DataLoader(
+            train_loader_args = dict(
                 dataset=Feeder(**self.arg.train_feeder_args),
                 batch_size=self.arg.batch_size,
                 shuffle=True,
-                pin_memory=True,
-                prefetch_factor=16,
+                pin_memory=(self.torch_device.type == 'cuda'),
                 num_workers=self.arg.num_worker,
                 drop_last=True,
                 worker_init_fn=init_seed)
+            if self.arg.num_worker > 0:
+                train_loader_args['prefetch_factor'] = 16
+            self.data_loader['train'] = torch.utils.data.DataLoader(**train_loader_args)
         self.data_loader['test'] = torch.utils.data.DataLoader(
             dataset=Feeder(**self.arg.test_feeder_args),
             batch_size=self.arg.test_batch_size,
@@ -501,7 +503,7 @@ class Processor():
 
         # mix_precision is slower for this model!!!
         use_amp = self.torch_device.type == 'cuda'
-        scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+        scaler = torch.amp.GradScaler('cuda', enabled=use_amp)
         # torch.autograd.set_detect_anomaly(True)
 
         soft_label_emma = 0
@@ -530,7 +532,7 @@ class Processor():
                     return loss.mean()
 
 
-            with torch.cuda.amp.autocast(enabled=use_amp):
+            with torch.amp.autocast('cuda', enabled=use_amp):
 
                 output, z = self.model(data, F.one_hot(label, num_classes=unwrap_model(self.model).num_class), joint)
                 # output, z = self.model(data, F.one_hot(label, num_classes=self.model.num_class), joint)
@@ -725,7 +727,12 @@ class Processor():
             confusion = confusion_matrix(label_list, pred_list)
             list_diag = np.diag(confusion)
             list_raw_sum = np.sum(confusion, axis=1)
-            each_acc = list_diag / list_raw_sum
+            each_acc = np.divide(
+                list_diag,
+                list_raw_sum,
+                out=np.zeros_like(list_diag, dtype=np.float64),
+                where=list_raw_sum != 0,
+            )
             with open('{}/epoch{}_{}_each_class_acc.csv'.format(self.arg.work_dir, epoch + 1, ln), 'w') as f:
                 writer = csv.writer(f)
                 writer.writerow(each_acc)
@@ -738,7 +745,12 @@ class Processor():
                 confusion_ema = confusion_matrix(label_list_ema, pred_list_ema)
                 list_diag_ema = np.diag(confusion_ema)
                 list_raw_sum_ema = np.sum(confusion_ema, axis=1)
-                each_acc_ema = list_diag_ema / list_raw_sum_ema
+                each_acc_ema = np.divide(
+                    list_diag_ema,
+                    list_raw_sum_ema,
+                    out=np.zeros_like(list_diag_ema, dtype=np.float64),
+                    where=list_raw_sum_ema != 0,
+                )
                 with open('{}/epoch{}_{}_each_class_acc_ema.csv'.format(self.arg.work_dir, epoch + 1, ln), 'w') as f:
                     writer = csv.writer(f)
                     writer.writerow(each_acc_ema)
