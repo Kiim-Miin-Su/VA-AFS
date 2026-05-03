@@ -29,4 +29,4 @@ BlockGCN/runs/
 BlockGCN/BlockGCN_pretrained_weights/
 *.zip
 
-.venv
+.venv/
