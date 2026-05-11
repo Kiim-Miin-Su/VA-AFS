@@ -38,7 +38,15 @@ def main() -> None:
             "BlockGCN training, VA-AFS test split reduction, and accuracy comparison."
         )
     )
-    parser.add_argument("--sample_size", type=int, default=3000)
+    parser.add_argument("--sample_size", type=int, default=20000)
+    parser.add_argument(
+        "--full_data",
+        action="store_true",
+        help=(
+            "Use the full NTU60 data directory at BlockGCN/data/ntu instead of "
+            "creating a sampled subset."
+        ),
+    )
     parser.add_argument("--test_ratio", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument(
@@ -71,18 +79,22 @@ def main() -> None:
     va_afs_dir = Path(__file__).resolve().parent
     project_root = va_afs_dir.parent
     blockgcn_dir = project_root / "BlockGCN"
-    subset_name = f"ntu_subset_{args.sample_size}"
-    subset_dir = blockgcn_dir / "data" / subset_name
+    subset_name = "ntu_full" if args.full_data else f"ntu_subset_{args.sample_size}"
+    subset_dir = blockgcn_dir / "data" / ("ntu" if args.full_data else subset_name)
     original_npz = subset_dir / "NTU60_CS.npz"
     train_work_dir = va_afs_dir / "outputs" / "blockgcn_train" / (
         f"{subset_name}_original_e{args.num_epoch}"
     )
     vaafs_npz = va_afs_dir / "outputs" / "blockgcn_npz" / (
-        f"NTU60_CS_subset{args.sample_size}_vaafs_test_only_"
+        f"NTU60_CS_{subset_name}_vaafs_test_only_"
         f"tau{args.tau}_k{args.k_max}_w{args.window_size}.npz"
     )
 
-    if args.force_subset or not subset_dir.exists():
+    if args.full_data:
+        if not subset_dir.exists():
+            raise FileNotFoundError(f"Full NTU60 data directory not found: {subset_dir}")
+        print(f"use full NTU60 data directory: {subset_dir}")
+    elif args.force_subset or not subset_dir.exists():
         run(
             [
                 sys.executable,
