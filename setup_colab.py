@@ -129,15 +129,6 @@ def main() -> None:
     data_dir = (project_root / args.data_dir).resolve()
 
     if not data_dir.exists():
-        if str(data_dir).startswith("/content/drive"):
-            raise FileNotFoundError(
-                f"Data directory not found: {data_dir}\n"
-                "This path exists only inside a Google Colab runtime after mounting Drive.\n"
-                "In a Colab notebook, run:\n"
-                "from google.colab import drive\n"
-                "drive.mount('/content/drive')\n"
-                "If you are running on your local machine, use a local path such as ../data."
-            )
         raise FileNotFoundError(f"Data directory not found: {data_dir}")
 
     for zip_name, relative_target in ZIP_TARGETS.items():
