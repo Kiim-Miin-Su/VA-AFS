@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
+
 
 def run(command: list[str], cwd: Path, dry_run: bool) -> None:
     print()
@@ -29,6 +31,20 @@ def find_checkpoint(work_dir: Path) -> Path:
     if len(checkpoints) > 1:
         print(f"warning: multiple checkpoints found; using {checkpoints[-1]}")
     return checkpoints[-1]
+
+
+def has_vaafs_metadata(npz_path: Path, splits: tuple[str, ...]) -> bool:
+    if not npz_path.exists():
+        return False
+    try:
+        with np.load(npz_path) as data:
+            return all(
+                f"{split}_original_counts" in data and f"{split}_selected_counts" in data
+                for split in splits
+            )
+    except Exception as exc:
+        print(f"warning: could not read existing VA-AFS npz; regenerating: {exc}")
+        return False
 
 
 def main() -> None:
@@ -154,7 +170,7 @@ def main() -> None:
         if not args.dry_run:
             checkpoint = find_checkpoint(train_work_dir)
 
-    if args.force_vaafs or not vaafs_npz.exists():
+    if args.force_vaafs or not has_vaafs_metadata(vaafs_npz, ("test",)):
         run(
             [
                 sys.executable,
