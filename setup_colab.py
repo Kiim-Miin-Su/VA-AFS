@@ -89,6 +89,7 @@ def verify_imports(project_root: Path) -> None:
     )
     code = (
         "import cv2, matplotlib, mediapipe, numpy, pandas, sklearn, torch, yaml; "
+        "import torch_topological; "
         "import torchlight; "
         "print('verify ok:', 'cuda=', torch.cuda.is_available())"
     )

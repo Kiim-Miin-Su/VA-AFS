@@ -10,4 +10,5 @@ PyYAML
 scikit-learn
 scipy
 tensorboardX
+torch-topological
 tqdm
