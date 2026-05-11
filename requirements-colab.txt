@@ -1,0 +1,13 @@
+# Colab/VS Code Colab requirements.
+# Torch is intentionally omitted because Colab already provides a CUDA build.
+einops
+matplotlib
+mediapipe
+numpy
+opencv-python-headless
+pandas
+PyYAML
+scikit-learn
+scipy
+tensorboardX
+tqdm

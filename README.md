@@ -2,6 +2,7 @@
 
 > **목표**  
 > 직접 촬영한 영상에서 MediaPipe로 skeleton coordinate sequence를 추출하고, VA-AFS threshold gate를 적용해 중요한 skeleton frame만 선택한다.
+> subset3000, epoch80 기준 Top1-acc: <>, Top5-acc: <>
 
 ---
 
@@ -9,14 +10,24 @@
 
 Google Drive: https://drive.google.com/drive/folders/1JX_Jf2jayPkdh8ii4jwNCrZSe6KdweKh?usp=sharing
 
+Colab 또는 VS Code Colab extension에서 발표용으로 돌릴 때는 위 Google Drive 공유 폴더의 zip 파일 4개를 자기 Drive의 `MyDrive/AFS/data/`에 둔다. 그 다음 Drive를 mount하고 repo를 Colab 런타임에 clone한 뒤 아래 명령을 실행한다.
+
+```bash
+python setup_colab.py --data_dir /content/drive/MyDrive/AFS/data --install --verify
+python VA-AFS/run_colab_pipeline.py --sample_size 3000 --num_epoch 80 --batch_size 64 --test_batch_size 64 --num_worker 2
+```
+
+자세한 Colab 절차와 결과 파일 위치는 `COLAB.md`를 참고한다.
+VS Code Colab extension에서는 `colab_run.ipynb`를 열고 `Select Kernel -> Colab -> Auto Connect`를 선택한 뒤 셀을 순서대로 실행하면 된다.
+
 이 저장소는 GitHub에 바로 올릴 수 있도록 코드, 설정 파일, 빈 폴더 구조만 포함한다. 대용량 원본 데이터와 실행 결과는 위 Google Drive에서 받은 뒤 `src/` 기준으로 아래 위치에 배치한다.
 
-| 데이터 묶음                          | 압축 해제 위치                 | 압축 해제 후 기대 경로                               |
-| ------------------------------------ | ------------------------------ | ---------------------------------------------------- |
-| `all_sqe.zip`                        | `BlockGCN/data/NW-UCLA/`       | `BlockGCN/data/NW-UCLA/all_sqe/`                     |
-| `nturgbd_skeletons_s001_to_s017.zip` | `BlockGCN/data/nturgbd_raw/`   | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons/`      |
-| `nturgbd_skeletons_s018_to_s032.zip` | `BlockGCN/data/nturgbd_raw/`   | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120/`   |
-| `videos.zip`                         | `VA-AFS/`                      | `VA-AFS/videos/`                                     |
+| 데이터 묶음                          | 압축 해제 위치               | 압축 해제 후 기대 경로                             |
+| ------------------------------------ | ---------------------------- | -------------------------------------------------- |
+| `all_sqe.zip`                        | `BlockGCN/data/NW-UCLA/`     | `BlockGCN/data/NW-UCLA/all_sqe/`                   |
+| `nturgbd_skeletons_s001_to_s017.zip` | `BlockGCN/data/nturgbd_raw/` | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons/`    |
+| `nturgbd_skeletons_s018_to_s032.zip` | `BlockGCN/data/nturgbd_raw/` | `BlockGCN/data/nturgbd_raw/nturgb+d_skeletons120/` |
+| `videos.zip`                         | `VA-AFS/`                    | `VA-AFS/videos/`                                   |
 
 가장 쉬운 복원 방법은 다운로드한 zip 파일들을 `src/../data/`에 둔 뒤, `src/` 폴더에서 아래 명령을 그대로 실행하는 것이다.
 
@@ -688,10 +699,10 @@ BlockGCN accuracy 실험에서는 원본 영상이나 MediaPipe `.npy`를 직접
 
 두 실행 경로를 구분해야 한다.
 
-| 목적 | 입력 파일 | 실행 스크립트 | 결과 |
-| ---- | --------- | ------------- | ---- |
-| 직접 촬영한 영상에서 VA-AFS 동작 확인 | `outputs/skeleton/npy/*_skeleton.npy` | `va_afs_threshold.py` | sampled `.npy`, 선택 frame 이미지, selection plot |
-| BlockGCN accuracy 비교 | `BlockGCN/data/ntu_subset_200/NTU60_CS.npz` | `apply_va_afs_to_blockgcn_npz.py` | VA-AFS 적용 BlockGCN `.npz` |
+| 목적                                  | 입력 파일                                   | 실행 스크립트                     | 결과                                              |
+| ------------------------------------- | ------------------------------------------- | --------------------------------- | ------------------------------------------------- |
+| 직접 촬영한 영상에서 VA-AFS 동작 확인 | `outputs/skeleton/npy/*_skeleton.npy`       | `va_afs_threshold.py`             | sampled `.npy`, 선택 frame 이미지, selection plot |
+| BlockGCN accuracy 비교                | `BlockGCN/data/ntu_subset_200/NTU60_CS.npz` | `apply_va_afs_to_blockgcn_npz.py` | VA-AFS 적용 BlockGCN `.npz`                       |
 
 `va_afs_threshold.py`는 `.npy`를 받는 단일 sequence 확인용 CLI이다. 반면 `apply_va_afs_to_blockgcn_npz.py`는 `.npz` 안의 `x_train`, `x_test` sequence를 하나씩 꺼내서 내부적으로 같은 `va_afs_threshold_sampling()` 함수를 호출한다.
 
@@ -757,11 +768,20 @@ python prepare_ntu_subset.py \
   --sample_size 200 \
   --test_ratio 0.2 \
   --seed 1 \
+  --sampling_strategy balanced_fallback_random \
   --output_dir ../BlockGCN/data/ntu_subset_200 \
   --force
 ```
 
-이 스크립트는 원본 NTU60 `statistics/*.txt`에서 CS train/test performer pool을 기준으로 랜덤 subset을 뽑고, 별도 전처리 폴더를 만든다.
+이 스크립트는 원본 NTU60 `statistics/*.txt`에서 CS train/test performer pool을 기준으로 subset을 뽑고, 별도 전처리 폴더를 만든다. 기본 권장값인 `--sampling_strategy balanced_fallback_random`은 split별 클래스를 최대한 고르게 맞추되, exact balancing이 어려우면 같은 seed 기준의 완전 랜덤 샘플링으로 자동 fallback한다.
+
+샘플링 전략:
+
+- `balanced`: train/test split 안에서 클래스 수를 최대한 고르게 맞춘다.
+- `random`: 클래스 라벨을 보지 않고 CS train/test pool에서 무작위 추출한다.
+- `balanced_fallback_random`: exact per-class balancing이 가능하면 balanced를 쓰고, 불가능하면 random으로 fallback한다.
+
+예를 들어 sample 수가 클래스 수와 잘 나누어떨어지고 각 클래스에 충분한 표본이 있으면 balanced가 사용된다. 반대로 exact balancing이 어려운 설정에서는 fallback 정책이 random을 사용한다.
 
 ```text
 BlockGCN/data/ntu_subset_200/
@@ -789,6 +809,8 @@ python seq_transformation.py
 
 작은 subset은 빠른 동작 확인용이다. 샘플 수가 작을수록 accuracy는 통계적으로 불안정하고, 클래스 분포도 전체 NTU60을 대표하지 않는다.
 
+클래스 분포를 가장 엄격하게 통제하고 싶으면 `--samples_per_class_per_split`를 쓰는 편이 더 직접적이다. 예를 들어 `--samples_per_class_per_split 10`이면 CS train과 CS test에서 각 클래스당 최대 10개씩 고정 선택한다.
+
 ### 15.3 Subset 원본 학습
 
 subset `.npz`가 생기면 작은 epoch로 먼저 학습이 되는지 확인한다.
@@ -796,15 +818,17 @@ subset `.npz`가 생기면 작은 epoch로 먼저 학습이 되는지 확인한�
 ```bash
 cd ../../../VA-AFS
 
+(mac)
 python run_blockgcn_train.py \
   --data_npz ../BlockGCN/data/ntu_subset_200/NTU60_CS.npz \
   --work_dir outputs/blockgcn_train/ntu_subset_200_original \
-  --num_epoch 5 \
-  --batch_size 8 \
-  --test_batch_size 8 \
-  --num_worker 1 \
+  --num_epoch 30 \
+  --batch_size 16 \
+  --test_batch_size 16 \
+  --num_worker 2 \
   --save_epoch 0 \
-  --keep_best_only
+  --keep_best_only \
+  --device mps
 ```
 
 주의:

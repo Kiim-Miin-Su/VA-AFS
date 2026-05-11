@@ -87,7 +87,86 @@ def select_indices_per_class(labels, performers, samples_per_class_per_split):
     return np.array(sorted(set(selected)), dtype=np.int64)
 
 
-def select_indices_random(performers, sample_size, test_ratio, seed):
+def balanced_sample_from_pool(labels, pool_indices, target_size, rng):
+    if target_size <= 0 or len(pool_indices) == 0:
+        return np.array([], dtype=np.int64)
+
+    if target_size > len(pool_indices):
+        raise ValueError(
+            f"Requested {target_size} samples from a pool of size {len(pool_indices)}."
+        )
+
+    class_to_indices = {}
+    for idx in pool_indices:
+        class_to_indices.setdefault(int(labels[idx]), []).append(int(idx))
+
+    classes = sorted(class_to_indices)
+    if not classes:
+        return np.array([], dtype=np.int64)
+
+    selected = []
+    remaining = int(target_size)
+
+    # Repeatedly give each remaining class one sample at a time so counts stay balanced.
+    while remaining > 0:
+        available_classes = [
+            label for label in classes if len(class_to_indices[label]) > 0
+        ]
+        if not available_classes:
+            break
+
+        round_labels = available_classes.copy()
+        rng.shuffle(round_labels)
+        round_take = min(remaining, len(round_labels))
+
+        for label in round_labels[:round_take]:
+            candidates = class_to_indices[label]
+            pick_pos = int(rng.integers(len(candidates)))
+            selected.append(candidates.pop(pick_pos))
+            remaining -= 1
+            if remaining == 0:
+                break
+
+    if len(selected) != target_size:
+        raise ValueError(
+            f"Could only draw {len(selected)} balanced samples out of {target_size}."
+        )
+
+    return np.array(sorted(selected), dtype=np.int64)
+
+
+def random_sample_from_pool(pool_indices, target_size, rng):
+    if target_size <= 0 or len(pool_indices) == 0:
+        return np.array([], dtype=np.int64)
+
+    if target_size > len(pool_indices):
+        raise ValueError(
+            f"Requested {target_size} samples from a pool of size {len(pool_indices)}."
+        )
+
+    return np.array(sorted(rng.choice(pool_indices, size=target_size, replace=False)), dtype=np.int64)
+
+
+def can_balance_pool_exactly(labels, pool_indices, target_size):
+    if target_size <= 0:
+        return True
+
+    class_counts = {}
+    for idx in pool_indices:
+        class_counts[int(labels[idx])] = class_counts.get(int(labels[idx]), 0) + 1
+
+    num_classes = len(class_counts)
+    if num_classes == 0:
+        return False
+
+    base, remainder = divmod(target_size, num_classes)
+    required_counts = [base + (1 if i < remainder else 0) for i in range(num_classes)]
+    available_counts = sorted(class_counts.values())
+
+    return all(available >= required for available, required in zip(available_counts, required_counts))
+
+
+def select_indices_random(labels, performers, sample_size, test_ratio, seed, sampling_strategy):
     rng = np.random.default_rng(seed)
     train_pool = np.array(
         [idx for idx, performer in enumerate(performers) if performer in CS_TRAIN_IDS],
@@ -112,10 +191,51 @@ def select_indices_random(performers, sample_size, test_ratio, seed):
             f"{train_size + test_size} are available."
         )
 
-    train_indices = rng.choice(train_pool, size=train_size, replace=False)
-    test_indices = rng.choice(test_pool, size=test_size, replace=False)
+    if sampling_strategy == "random":
+        train_indices = random_sample_from_pool(train_pool, train_size, rng)
+        test_indices = random_sample_from_pool(test_pool, test_size, rng)
+        strategy_used = "random"
+    elif sampling_strategy == "balanced":
+        train_indices = balanced_sample_from_pool(
+            labels=labels,
+            pool_indices=train_pool,
+            target_size=train_size,
+            rng=rng,
+        )
+        test_indices = balanced_sample_from_pool(
+            labels=labels,
+            pool_indices=test_pool,
+            target_size=test_size,
+            rng=rng,
+        )
+        strategy_used = "balanced"
+    elif sampling_strategy == "balanced_fallback_random":
+        can_balance_train = can_balance_pool_exactly(labels, train_pool, train_size)
+        can_balance_test = can_balance_pool_exactly(labels, test_pool, test_size)
 
-    return np.array(sorted(np.concatenate([train_indices, test_indices])), dtype=np.int64)
+        if can_balance_train and can_balance_test:
+            train_indices = balanced_sample_from_pool(
+                labels=labels,
+                pool_indices=train_pool,
+                target_size=train_size,
+                rng=rng,
+            )
+            test_indices = balanced_sample_from_pool(
+                labels=labels,
+                pool_indices=test_pool,
+                target_size=test_size,
+                rng=rng,
+            )
+            strategy_used = "balanced"
+        else:
+            train_indices = random_sample_from_pool(train_pool, train_size, rng)
+            test_indices = random_sample_from_pool(test_pool, test_size, rng)
+            strategy_used = "random_fallback"
+    else:
+        raise ValueError(f"Unsupported sampling_strategy: {sampling_strategy}")
+
+    indices = np.array(sorted(np.concatenate([train_indices, test_indices])), dtype=np.int64)
+    return indices, strategy_used
 
 
 def write_subset_statistics(source_stat_dir: Path, output_stat_dir: Path, indices):
@@ -210,8 +330,20 @@ def main():
         type=int,
         default=120,
         help=(
-            "Total number of NTU60 samples to draw randomly from CS train/test "
-            "pools. Default 120."
+            "Total number of NTU60 samples to draw from CS train/test pools. "
+            "Default 120."
+        ),
+    )
+    parser.add_argument(
+        "--sampling_strategy",
+        choices=["balanced", "random", "balanced_fallback_random"],
+        default="balanced_fallback_random",
+        help=(
+            "Sampling policy for --sample_size. "
+            "'balanced' minimizes class imbalance within each CS split, "
+            "'random' ignores class labels, and "
+            "'balanced_fallback_random' tries exact per-class balancing first "
+            "and falls back to random sampling when that is not possible."
         ),
     )
     parser.add_argument(
@@ -264,15 +396,18 @@ def main():
             f"per-class, {args.samples_per_class_per_split} per CS split"
         )
     else:
-        indices = select_indices_random(
+        indices, strategy_used = select_indices_random(
+            labels=labels,
             performers=performers,
             sample_size=args.sample_size,
             test_ratio=args.test_ratio,
             seed=args.seed,
+            sampling_strategy=args.sampling_strategy,
         )
         selection_mode = (
-            f"random sample_size={args.sample_size}, "
-            f"test_ratio={args.test_ratio}, seed={args.seed}"
+            f"{strategy_used} sample_size={args.sample_size}, "
+            f"test_ratio={args.test_ratio}, seed={args.seed}, "
+            f"requested_strategy={args.sampling_strategy}"
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)

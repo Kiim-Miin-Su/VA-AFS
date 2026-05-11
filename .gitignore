@@ -1,5 +1,15 @@
 .DS_Store
 
+# Python/runtime generated files.
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
 # Large local datasets and generated artifacts are stored outside Git.
 BlockGCN/data/**
 !BlockGCN/data/**/
@@ -23,10 +33,29 @@ outputs/**
 !outputs/**/
 !outputs/**/.gitkeep
 
-# Large model/checkpoint artifacts.
+# Large local data, model output, and checkpoint artifacts.
 BlockGCN/work_dir/
 BlockGCN/runs/
 BlockGCN/BlockGCN_pretrained_weights/
+wandb/
+runs/
+work_dir/
+
+*.avi
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.skeleton
+*.npy
+*.npz
+*.h5
+*.pkl
+*.pt
+*.pth
+*.ckpt
 *.zip
+
+!BlockGCN/data/NW-UCLA/val_label.pkl
 
 .venv/
