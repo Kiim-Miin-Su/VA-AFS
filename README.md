@@ -10,7 +10,9 @@
 
 Google Drive: https://drive.google.com/drive/folders/1JX_Jf2jayPkdh8ii4jwNCrZSe6KdweKh?usp=sharing
 
-Colab 또는 VS Code Colab extension에서 발표용으로 돌릴 때는 위 Google Drive 공유 폴더의 zip 파일 4개를 자기 Drive의 `MyDrive/AFS/data/`에 둔다. 그 다음 Drive를 mount하고 repo를 Colab 런타임에 clone한 뒤 아래 명령을 실행한다.
+Colab 웹에서 바로 실행하려면 `colab_run.ipynb`를 연 뒤 `Runtime -> Change runtime type -> GPU`를 선택한다. 기본 설정은 빠른 smoke test만 실행하므로, 발표용 학습은 노트북 설정 셀에서 `RUN_PRESENTATION = True`와 `SHOW_FIGURES = True`로 바꾼다.
+
+Colab 또는 VS Code Colab extension에서 발표용으로 돌릴 때는 위 Google Drive 공유 폴더의 zip 파일 4개를 자기 Drive의 `MyDrive/AFS/data/`에 둔다. 그 다음 노트북을 순서대로 실행하거나 아래 명령을 실행한다.
 
 ```bash
 python setup_colab.py --data_dir /content/drive/MyDrive/AFS/data --install --verify
@@ -18,7 +20,7 @@ python VA-AFS/run_colab_pipeline.py --sample_size 3000 --num_epoch 80 --batch_si
 ```
 
 자세한 Colab 절차와 결과 파일 위치는 `COLAB.md`를 참고한다.
-VS Code Colab extension에서는 `colab_run.ipynb`를 열고 `Select Kernel -> Colab -> Auto Connect`를 선택한 뒤 셀을 순서대로 실행하면 된다.
+VS Code Colab extension에서는 `colab_run.ipynb`를 열고 `Select Kernel -> Colab -> Auto Connect`를 선택한 뒤 같은 설정 셀을 조정해 실행하면 된다.
 
 이 저장소는 GitHub에 바로 올릴 수 있도록 코드, 설정 파일, 빈 폴더 구조만 포함한다. 대용량 원본 데이터와 실행 결과는 위 Google Drive에서 받은 뒤 `src/` 기준으로 아래 위치에 배치한다.
 

@@ -65,20 +65,40 @@ def flatten_nested_dir(parent: Path, nested_name: str) -> None:
 
 
 def install_requirements(project_root: Path) -> None:
+    if imports_available(project_root):
+        print("skip install: Colab requirements already import correctly")
+        return
+
     requirements_path = project_root / "requirements-colab.txt"
     torchlight_dir = project_root / "BlockGCN" / "torchlight"
 
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-r", str(requirements_path)],
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "-r",
+            str(requirements_path),
+        ],
         check=True,
     )
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-e", str(torchlight_dir)],
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "-e",
+            str(torchlight_dir),
+        ],
         check=True,
     )
 
 
-def verify_imports(project_root: Path) -> None:
+def make_verify_env(project_root: Path) -> dict[str, str]:
     env = os.environ.copy()
     torchlight_path = str(project_root / "BlockGCN" / "torchlight")
     current_pythonpath = env.get("PYTHONPATH")
@@ -87,13 +107,37 @@ def verify_imports(project_root: Path) -> None:
         if not current_pythonpath
         else f"{torchlight_path}{os.pathsep}{current_pythonpath}"
     )
+    return env
+
+
+def imports_available(project_root: Path) -> bool:
+    code = (
+        "import cv2, matplotlib, mediapipe, numpy, pandas, sklearn, torch, yaml; "
+        "import torch_topological; "
+        "import torchlight"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        env=make_verify_env(project_root),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def verify_imports(project_root: Path) -> None:
     code = (
         "import cv2, matplotlib, mediapipe, numpy, pandas, sklearn, torch, yaml; "
         "import torch_topological; "
         "import torchlight; "
         "print('verify ok:', 'cuda=', torch.cuda.is_available())"
     )
-    subprocess.run([sys.executable, "-c", code], check=True, env=env)
+    subprocess.run(
+        [sys.executable, "-c", code],
+        check=True,
+        env=make_verify_env(project_root),
+    )
 
 
 def main() -> None:

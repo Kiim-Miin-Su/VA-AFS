@@ -1,20 +1,24 @@
 # Colab 실행 가이드
 
-이 문서는 처음 보는 사람이 GitHub에서 이 프로젝트를 clone한 뒤, Google Colab 또는 VS Code Colab extension으로 발표용 실험을 실행하는 절차이다.
+이 문서는 Google Colab 웹에서 `colab_run.ipynb`를 열어 VA-AFS 발표용 실험을 실행하는 절차이다. VS Code Colab extension에서도 같은 노트북을 순서대로 실행하면 된다.
 
-## 1. VS Code에서 Colab 연결
+## 1. Colab 웹에서 열기
 
-VS Code에서 `.ipynb` 파일을 하나 열고 우상단 `Select Kernel`을 누른다.
+GitHub에 올라간 노트북을 Colab에서 바로 연다.
 
 ```text
-Select Kernel -> Colab -> Auto Connect
+https://colab.research.google.com/github/Kiim-Miin-Su/VA-AFS/blob/main/colab_run.ipynb
 ```
 
-이 저장소에는 같은 내용을 담은 `colab_run.ipynb`도 포함되어 있다. VS Code에서는 이 파일을 열고 Colab kernel을 선택한 뒤 셀을 순서대로 실행하면 된다.
+Colab 메뉴에서 GPU 런타임을 먼저 선택한다.
 
-Google 로그인 후 연결되면 아래 셀들을 순서대로 실행한다. Colab kernel은 로컬 파일을 직접 보지 못하므로, Colab 런타임 안의 `/content/src`에 GitHub repo를 다시 clone한다.
+```text
+Runtime -> Change runtime type -> Hardware accelerator -> GPU
+```
 
-## 2. Drive mount와 repo clone
+노트북 기본값은 긴 학습을 바로 시작하지 않도록 smoke test만 실행한다. 발표용 80 epoch 실험은 설정 셀에서 `RUN_PRESENTATION = True`로 바꾼 뒤 실행한다.
+
+## 2. 데이터 준비
 
 데이터는 아래 Google Drive 공유 폴더에서 받는다.
 
@@ -22,7 +26,7 @@ Google 로그인 후 연결되면 아래 셀들을 순서대로 실행한다. Co
 https://drive.google.com/drive/folders/1JX_Jf2jayPkdh8ii4jwNCrZSe6KdweKh?usp=sharing
 ```
 
-처음 실행하는 사람은 위 공유 폴더의 zip 파일 4개를 자기 Google Drive에 복사하거나 다운로드 후 업로드해서 아래 경로로 맞춘다.
+처음 실행하는 사람은 공유 폴더의 zip 파일 4개를 자기 Google Drive에 복사하거나 다운로드 후 업로드해서 아래 경로로 맞춘다.
 
 ```text
 MyDrive/AFS/data/
@@ -32,77 +36,51 @@ MyDrive/AFS/data/
 └── videos.zip
 ```
 
-주의: Colab에서 `drive.mount("/content/drive")`를 하면 현재 로그인한 Google 계정의 Drive만 보인다. 내 Drive에 있는 파일은 다른 사람의 Colab 런타임에 자동으로 보이지 않으므로, 공유 링크로 접근 권한을 받은 뒤 자기 Drive에 복사하거나 shortcut/path를 맞춰야 한다.
+주의: Colab에서 `drive.mount("/content/drive")`를 하면 현재 로그인한 Google 계정의 Drive만 보인다. 공유 폴더에 접근 권한이 있어도 zip 파일이 내 Drive 경로에 없으면 `/content/drive/MyDrive/AFS/data`에서 찾을 수 없다.
 
-노트북 첫 셀:
+다른 경로를 쓰는 경우 노트북 설정 셀의 `DATA_DIR`만 바꾼다.
 
 ```python
-from google.colab import drive
-drive.mount("/content/drive")
+DATA_DIR = "/content/drive/MyDrive/va-afs-data"
 ```
 
-두 번째 셀:
+## 3. 노트북 실행 흐름
 
-```bash
-%cd /content
-!git clone https://github.com/Kiim-Miin-Su/VA-AFS.git /content/src
-%cd /content/src
-```
-
-이미 `/content/src`가 있으면 런타임을 다시 시작하거나 아래처럼 지우고 clone한다.
-
-```bash
-%cd /content
-!rm -rf /content/src
-!git clone https://github.com/Kiim-Miin-Su/VA-AFS.git /content/src
-%cd /content/src
-```
-
-## 3. 데이터 압축 해제와 의존성 설치
-
-Colab 메뉴에서 GPU 런타임이 켜져 있는지 확인한 뒤 실행한다.
-
-```bash
-!python setup_colab.py --data_dir /content/drive/MyDrive/AFS/data --install --verify
-```
-
-`setup_colab.py`는 zip을 올바른 위치에 풀고, NTU 폴더가 중첩된 경우 자동으로 한 단계 펴준다.
-
-Drive 경로를 다르게 올렸다면 `--data_dir`만 바꾸면 된다. 예를 들어 `MyDrive/va-afs-data/`에 올렸다면:
-
-```bash
-!python setup_colab.py --data_dir /content/drive/MyDrive/va-afs-data --install --verify
-```
-
-## 4. 발표용 전체 파이프라인
-
-subset 3000개, epoch 80 기준 실행:
-
-```bash
-!python VA-AFS/run_colab_pipeline.py \
-  --sample_size 3000 \
-  --num_epoch 80 \
-  --batch_size 64 \
-  --test_batch_size 64 \
-  --num_worker 2
-```
-
-이 명령은 아래 작업을 순서대로 실행한다.
+`colab_run.ipynb`는 다음 순서로 구성되어 있다.
 
 ```text
-1. NTU subset 폴더 생성
-2. BlockGCN 전처리로 NTU60_CS.npz 생성
-3. 원본 subset으로 BlockGCN 학습
-4. test split에 VA-AFS 적용
-5. 원본 subset과 VA-AFS subset accuracy 비교
+1. Google Drive mount
+2. 실행 설정
+3. /content/src에 GitHub repo clone
+4. Drive zip 파일 존재 확인
+5. 데이터 압축 해제와 Colab 의존성 설치
+6. GPU 확인
+7. smoke test
+8. 발표용 pipeline
+9. 전체 NTU60 optional run
+10. 결과 시각화
+11. Drive backup optional
 ```
 
-## 5. 짧은 smoke test
+repo clone은 `/content/src`가 이미 있으면 재사용한다. 최신 GitHub 내용을 다시 받고 싶으면 설정 셀에서 `FORCE_RECLONE = True`로 바꾼다.
 
-런타임 확인만 빠르게 하려면 발표용 명령 대신 아래를 먼저 실행한다.
+`setup_colab.py`는 이미 압축 해제된 데이터가 있으면 건너뛰고, Colab requirements import가 이미 가능한 경우 pip 설치도 건너뛴다.
+
+## 4. 빠른 smoke test
+
+기본 설정은 아래와 같다.
+
+```python
+RUN_SMOKE_TEST = True
+SMOKE_SAMPLE_SIZE = 200
+SMOKE_NUM_EPOCH = 2
+SMOKE_BATCH_SIZE = 8
+```
+
+실행되는 명령은 다음과 같다.
 
 ```bash
-!python VA-AFS/run_colab_pipeline.py \
+python VA-AFS/run_colab_pipeline.py \
   --sample_size 200 \
   --num_epoch 2 \
   --batch_size 8 \
@@ -110,29 +88,84 @@ subset 3000개, epoch 80 기준 실행:
   --num_worker 1
 ```
 
-## 6. 다시 실행할 때
+이 단계는 런타임, 데이터, dependency, BlockGCN 호출이 정상인지 확인하기 위한 것이다. accuracy는 의미 있게 해석하지 않는다.
+
+## 5. 발표용 전체 파이프라인
+
+발표용 실행은 설정 셀에서 아래처럼 바꾼다.
+
+```python
+RUN_SMOKE_TEST = False
+RUN_PRESENTATION = True
+SHOW_FIGURES = True
+
+PRESENTATION_SAMPLE_SIZE = 3000
+PRESENTATION_NUM_EPOCH = 80
+PRESENTATION_BATCH_SIZE = 64
+PRESENTATION_TEST_BATCH_SIZE = 64
+PRESENTATION_NUM_WORKER = 2
+```
+
+실행되는 명령은 다음과 같다.
 
 ```bash
-!python VA-AFS/run_colab_pipeline.py --force_subset --force_preprocess
-!python VA-AFS/run_colab_pipeline.py --force_train
-!python VA-AFS/run_colab_pipeline.py --force_vaafs
+python VA-AFS/run_colab_pipeline.py \
+  --sample_size 3000 \
+  --num_epoch 80 \
+  --batch_size 64 \
+  --test_batch_size 64 \
+  --num_worker 2
+```
+
+파이프라인은 아래 작업을 순서대로 실행한다.
+
+```text
+1. NTU subset 폴더 생성
+2. BlockGCN 전처리로 NTU60_CS.npz 생성
+3. 원본 subset으로 BlockGCN 학습
+4. test split에 VA-AFS 적용
+5. 원본 subset과 VA-AFS subset accuracy 비교
+6. frame reduction/accuracy plot 생성
+```
+
+더 큰 실험이 필요하면 `PRESENTATION_SAMPLE_SIZE`를 `18000`처럼 늘린다. Colab 무료 GPU에서는 런타임 제한 때문에 먼저 3000개 subset으로 전체 흐름을 확인하는 편이 안전하다.
+
+## 6. 다시 실행할 때
+
+`run_colab_pipeline.py`는 이미 만들어진 subset, `.npz`, checkpoint, VA-AFS 결과를 기본적으로 재사용한다.
+
+필요한 단계만 강제로 다시 만들 수 있다.
+
+```bash
+python VA-AFS/run_colab_pipeline.py --force_subset --force_preprocess
+python VA-AFS/run_colab_pipeline.py --force_train
+python VA-AFS/run_colab_pipeline.py --force_vaafs
 ```
 
 명령만 확인하려면:
 
 ```bash
-!python VA-AFS/run_colab_pipeline.py --force_subset --force_preprocess --force_train --force_vaafs --dry_run
+python VA-AFS/run_colab_pipeline.py \
+  --force_subset \
+  --force_preprocess \
+  --force_train \
+  --force_vaafs \
+  --dry_run
 ```
 
 ## 7. 결과 위치
 
+`sample_size=3000`, `epoch=80` 기준 주요 결과는 아래에 생긴다.
+
 ```text
 BlockGCN/data/ntu_subset_3000/NTU60_CS.npz
 VA-AFS/outputs/blockgcn_train/ntu_subset_3000_original_e80/runs-*.pt
-VA-AFS/outputs/blockgcn_npz/NTU60_CS_subset3000_vaafs_test_only_tau0.9_k13_w13.npz
-VA-AFS/outputs/blockgcn_npz/NTU60_CS_subset3000_vaafs_test_only_tau0.9_k13_w13.summary.txt
+VA-AFS/outputs/blockgcn_npz/NTU60_CS_ntu_subset_3000_vaafs_test_only_tau0.9_k13_w13.npz
+VA-AFS/outputs/blockgcn_npz/NTU60_CS_ntu_subset_3000_vaafs_test_only_tau0.9_k13_w13.summary.txt
 VA-AFS/outputs/blockgcn_acc/ntu_subset_3000_original_e80/log.txt
 VA-AFS/outputs/blockgcn_acc/ntu_subset_3000_vaafs_e80/log.txt
+VA-AFS/outputs/presentation_plots/subset3000_test_frame_ratio.png
+VA-AFS/outputs/presentation_plots/subset3000_e80_accuracy.png
 ```
 
-발표에서는 두 accuracy 로그와 `*.summary.txt`의 `processed frame ratio`, `frame reduction`을 같이 보여주면 된다.
+Colab 런타임은 종료되면 `/content/src`의 결과가 사라진다. 결과를 Drive에 남기려면 설정 셀에서 `BACKUP_RESULTS_TO_DRIVE = True`로 바꿔 마지막 backup 셀을 실행한다.
