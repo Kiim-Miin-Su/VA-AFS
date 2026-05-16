@@ -77,6 +77,7 @@ def make_blockgcn_env(blockgcn_dir: Path):
         if not current_pythonpath
         else f"{torchlight_path}{os.pathsep}{current_pythonpath}"
     )
+    env["PYTHONUNBUFFERED"] = "1"
     return env
 
 
@@ -158,6 +159,7 @@ def main():
 
     command = [
         sys.executable,
+        "-u",
         "main.py",
         "--phase",
         "test",
@@ -175,29 +177,34 @@ def main():
         *[str(device_id) for device_id in device],
     ]
 
-    print("BlockGCN command:")
-    print(" ".join(command))
+    print("BlockGCN command:", flush=True)
+    print(" ".join(command), flush=True)
 
     if args.dry_run:
         return
 
-    result = subprocess.run(
+    process = subprocess.Popen(
         command,
         cwd=blockgcn_dir,
         env=make_blockgcn_env(blockgcn_dir),
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        check=False,
     )
-    print(result.stdout)
+    assert process.stdout is not None
+    output_parts = []
+    for chunk in iter(lambda: process.stdout.read(1), ""):
+        print(chunk, end="", flush=True)
+        output_parts.append(chunk)
+    returncode = process.wait()
+    output = "".join(output_parts)
 
-    accuracy = parse_accuracy(result.stdout)
+    accuracy = parse_accuracy(output)
     if accuracy is not None:
-        print(f"Parsed Top-1 accuracy: {accuracy:.4f}")
+        print(f"Parsed Top-1 accuracy: {accuracy:.4f}", flush=True)
 
-    if result.returncode != 0:
-        raise SystemExit(result.returncode)
+    if returncode != 0:
+        raise SystemExit(returncode)
 
 
 if __name__ == "__main__":

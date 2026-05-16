@@ -55,6 +55,7 @@ def make_blockgcn_env(blockgcn_dir: Path):
         if not current_pythonpath
         else f"{torchlight_path}{os.pathsep}{current_pythonpath}"
     )
+    env["PYTHONUNBUFFERED"] = "1"
     return env
 
 
@@ -177,6 +178,7 @@ def main():
 
     command = [
         sys.executable,
+        "-u",
         "main.py",
         "--phase",
         "train",
@@ -190,8 +192,8 @@ def main():
         *[str(device_id) for device_id in device],
     ]
 
-    print("BlockGCN command:")
-    print(" ".join(command))
+    print("BlockGCN command:", flush=True)
+    print(" ".join(command), flush=True)
 
     if args.dry_run:
         return

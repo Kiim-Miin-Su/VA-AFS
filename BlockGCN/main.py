@@ -471,7 +471,7 @@ class Processor():
         if print_time:
             localtime = time.asctime(time.localtime(time.time()))
             str = "[ " + localtime + ' ] ' + str
-        print(str)
+        print(str, flush=True)
         if self.arg.print_log:
             with open('{}/log.txt'.format(self.arg.work_dir), 'a') as f:
                 print(str, file=f)
@@ -499,7 +499,13 @@ class Processor():
         self.train_writer.add_scalar('epoch', epoch, self.global_step)
         self.record_time()
         timer = dict(dataloader=0.001, model=0.001, statistics=0.001)
-        process = tqdm(loader, ncols=40)
+        process = tqdm(
+            loader,
+            desc=f'train {epoch + 1}/{self.arg.num_epoch}',
+            ncols=100,
+            mininterval=1.0,
+            file=sys.stdout,
+        )
 
         # mix_precision is slower for this model!!!
         use_amp = self.torch_device.type == 'cuda'
@@ -574,6 +580,11 @@ class Processor():
             self.lr = self.optimizer.param_groups[0]['lr']
             self.train_writer.add_scalar('lr', self.lr, self.global_step)
             timer['statistics'] += self.split_time()
+            process.set_postfix(
+                loss=f'{loss.data.item():.4f}',
+                acc=f'{acc.data.item() * 100:.1f}%',
+                lr=f'{self.lr:.2e}',
+            )
 
         # statistics of time consumption and loss
         proportion = {
@@ -610,7 +621,13 @@ class Processor():
             label_list_ema = []
             pred_list_ema = []
             step = 0
-            process = tqdm(self.data_loader[ln], ncols=40)
+            process = tqdm(
+                self.data_loader[ln],
+                desc=f'eval {epoch + 1}/{self.arg.num_epoch} {ln}',
+                ncols=100,
+                mininterval=1.0,
+                file=sys.stdout,
+            )
             for batch_idx, (joint, data, label, index) in enumerate(process):
                 label_list.append(label)
                 if arg.ema:
@@ -682,9 +699,9 @@ class Processor():
                     self.best_acc_ema = accuracy_ema
                     self.best_acc_epoch_ema = epoch + 1
 
-            print('Accuracy: ', accuracy, ' model: ', self.arg.model_saved_name)
+            print('Accuracy: ', accuracy, ' model: ', self.arg.model_saved_name, flush=True)
             if self.arg.ema:
-                print('Accuracy_ema: ', accuracy, ' model_ema: ', self.arg.model_saved_name)
+                print('Accuracy_ema: ', accuracy, ' model_ema: ', self.arg.model_saved_name, flush=True)
             if self.arg.phase == 'train':
                 self.val_writer.add_scalar('loss', loss, self.global_step)
                 self.val_writer.add_scalar('acc', accuracy, self.global_step)

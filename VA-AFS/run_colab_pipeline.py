@@ -6,10 +6,12 @@ from pathlib import Path
 import numpy as np
 
 
-def run(command: list[str], cwd: Path, dry_run: bool) -> None:
+def run(command: list[str], cwd: Path, dry_run: bool, stage: str | None = None) -> None:
     print()
-    print(f"[cwd] {cwd}")
-    print("[cmd] " + " ".join(command))
+    if stage:
+        print(f"[stage] {stage}", flush=True)
+    print(f"[cwd] {cwd}", flush=True)
+    print("[cmd] " + " ".join(command), flush=True)
     if dry_run:
         return
     subprocess.run(command, cwd=cwd, check=True)
@@ -21,7 +23,12 @@ def run_preprocess_scripts(subset_dir: Path, dry_run: bool) -> None:
         "get_raw_denoised_data.py",
         "seq_transformation.py",
     ):
-        run([sys.executable, script_name], cwd=subset_dir, dry_run=dry_run)
+        run(
+            [sys.executable, script_name],
+            cwd=subset_dir,
+            dry_run=dry_run,
+            stage=f"preprocess NTU subset: {script_name}",
+        )
 
 
 def find_checkpoint(work_dir: Path) -> Path:
@@ -129,6 +136,7 @@ def main() -> None:
             ],
             cwd=va_afs_dir,
             dry_run=args.dry_run,
+            stage=f"create NTU subset: {subset_name}",
         )
     else:
         print(f"skip subset creation: {subset_dir}")
@@ -163,7 +171,12 @@ def main() -> None:
             ]
             if args.device:
                 train_command.extend(["--device", *args.device])
-            run(train_command, cwd=va_afs_dir, dry_run=args.dry_run)
+            run(
+                train_command,
+                cwd=va_afs_dir,
+                dry_run=args.dry_run,
+                stage=f"train BlockGCN: {subset_name}, epochs={args.num_epoch}",
+            )
         else:
             print(f"skip training: checkpoint already exists in {train_work_dir}")
 
@@ -190,6 +203,7 @@ def main() -> None:
             ],
             cwd=va_afs_dir,
             dry_run=args.dry_run,
+            stage=f"apply VA-AFS to test split: {subset_name}",
         )
     else:
         print(f"skip VA-AFS npz: {vaafs_npz}")
@@ -224,7 +238,12 @@ def main() -> None:
         ]
         if args.device:
             eval_command.extend(["--device", *args.device])
-        run(eval_command, cwd=va_afs_dir, dry_run=False)
+        run(
+            eval_command,
+            cwd=va_afs_dir,
+            dry_run=False,
+            stage=f"evaluate BlockGCN accuracy: {label}",
+        )
 
     print("pipeline complete.")
     print(f"checkpoint : {checkpoint}")
