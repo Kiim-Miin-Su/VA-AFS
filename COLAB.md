@@ -142,6 +142,21 @@ python VA-AFS/run_colab_pipeline.py --force_train
 python VA-AFS/run_colab_pipeline.py --force_vaafs
 ```
 
+발표 figure 셀에서 아래 에러가 나면 accuracy 평가 로그가 아직 없다는 뜻이다.
+
+```text
+FileNotFoundError: Accuracy logs were not found.
+```
+
+frame ratio plot은 VA-AFS `.npz`만 있으면 그려지지만, accuracy plot은 아래 두 로그가 필요하다.
+
+```text
+VA-AFS/outputs/blockgcn_acc/ntu_subset_<sample_size>_original_e<num_epoch>/log.txt
+VA-AFS/outputs/blockgcn_acc/ntu_subset_<sample_size>_vaafs_e<num_epoch>/log.txt
+```
+
+이 경우 Colab에서 발표용 pipeline 셀을 같은 `PRESENTATION_SAMPLE_SIZE`, `PRESENTATION_NUM_EPOCH` 값으로 다시 실행한다. 이미 만들어진 subset, preprocessing 결과, checkpoint, VA-AFS `.npz`는 재사용되고 누락된 eval 로그가 다시 생성된다.
+
 명령만 확인하려면:
 
 ```bash
