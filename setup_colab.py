@@ -7,6 +7,19 @@ import zipfile
 from pathlib import Path
 
 
+VERIFY_IMPORTS = (
+    "cv2",
+    "matplotlib",
+    "mediapipe",
+    "numpy",
+    "pandas",
+    "sklearn",
+    "torch",
+    "torch_topological",
+    "torchlight",
+    "yaml",
+)
+
 ZIP_TARGETS = {
     "all_sqe.zip": Path("BlockGCN/data/NW-UCLA"),
     "nturgbd_skeletons_s001_to_s017.zip": Path("BlockGCN/data/nturgbd_raw"),
@@ -26,6 +39,17 @@ EXPECTED_PATHS = {
 }
 
 
+def log(message: str) -> None:
+    print(f"[setup] {message}", flush=True)
+
+
+def run_checked(command: list[str], *, env: dict[str, str] | None = None) -> None:
+    log("cmd: " + " ".join(command))
+    result = subprocess.run(command, env=env, check=False)
+    if result.returncode != 0:
+        raise SystemExit(f"command failed with exit code {result.returncode}: {' '.join(command)}")
+
+
 def has_real_files(path: Path) -> bool:
     if not path.exists():
         return False
@@ -34,14 +58,15 @@ def has_real_files(path: Path) -> bool:
 
 def extract_zip(zip_path: Path, target_dir: Path, expected_path: Path, force: bool) -> None:
     if has_real_files(expected_path) and not force:
-        print(f"skip: {expected_path} already has files")
+        log(f"skip unzip: {expected_path} already has files")
         return
 
     if expected_path.exists() and force:
+        log(f"remove existing extracted dir: {expected_path}")
         shutil.rmtree(expected_path)
 
     target_dir.mkdir(parents=True, exist_ok=True)
-    print(f"unzip: {zip_path} -> {target_dir}")
+    log(f"unzip: {zip_path} -> {target_dir}")
     with zipfile.ZipFile(zip_path) as archive:
         archive.extractall(target_dir)
 
@@ -51,7 +76,7 @@ def flatten_nested_dir(parent: Path, nested_name: str) -> None:
     if not parent.exists() or not nested.exists() or not nested.is_dir():
         return
 
-    print(f"fix nested directory: {nested} -> {parent}")
+    log(f"fix nested directory: {nested} -> {parent}")
     for child in nested.iterdir():
         target = parent / child.name
         if target.exists():
@@ -65,14 +90,16 @@ def flatten_nested_dir(parent: Path, nested_name: str) -> None:
 
 
 def install_requirements(project_root: Path) -> None:
-    if imports_available(project_root):
-        print("skip install: Colab requirements already import correctly")
+    missing = missing_imports(project_root)
+    if not missing:
+        log("skip install: Colab requirements already import correctly")
         return
 
+    log("missing imports before install: " + ", ".join(module for module, _ in missing))
     requirements_path = project_root / "requirements-colab.txt"
     torchlight_dir = project_root / "BlockGCN" / "torchlight"
 
-    subprocess.run(
+    run_checked(
         [
             sys.executable,
             "-m",
@@ -81,10 +108,9 @@ def install_requirements(project_root: Path) -> None:
             "--disable-pip-version-check",
             "-r",
             str(requirements_path),
-        ],
-        check=True,
+        ]
     )
-    subprocess.run(
+    run_checked(
         [
             sys.executable,
             "-m",
@@ -93,8 +119,7 @@ def install_requirements(project_root: Path) -> None:
             "--disable-pip-version-check",
             "-e",
             str(torchlight_dir),
-        ],
-        check=True,
+        ]
     )
 
 
@@ -111,33 +136,46 @@ def make_verify_env(project_root: Path) -> dict[str, str]:
 
 
 def imports_available(project_root: Path) -> bool:
+    return not missing_imports(project_root)
+
+
+def missing_imports(project_root: Path) -> list[tuple[str, str]]:
+    missing = []
+    env = make_verify_env(project_root)
+    for module in VERIFY_IMPORTS:
+        code = f"import {module}"
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout).strip().splitlines()
+            missing.append((module, detail[-1] if detail else "unknown import error"))
+    return missing
+
+
+def verify_imports(project_root: Path) -> None:
+    missing = missing_imports(project_root)
+    if missing:
+        details = "\n".join(f"  - {module}: {error}" for module, error in missing)
+        raise RuntimeError(f"Import verification failed:\n{details}")
+
     code = (
-        "import cv2, matplotlib, mediapipe, numpy, pandas, sklearn, torch, yaml; "
-        "import torch_topological; "
-        "import torchlight"
+        "import torch; "
+        "print('verify ok:', 'cuda=', torch.cuda.is_available(), flush=True)"
     )
     result = subprocess.run(
         [sys.executable, "-c", code],
         env=make_verify_env(project_root),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        text=True,
         check=False,
     )
-    return result.returncode == 0
-
-
-def verify_imports(project_root: Path) -> None:
-    code = (
-        "import cv2, matplotlib, mediapipe, numpy, pandas, sklearn, torch, yaml; "
-        "import torch_topological; "
-        "import torchlight; "
-        "print('verify ok:', 'cuda=', torch.cuda.is_available())"
-    )
-    subprocess.run(
-        [sys.executable, "-c", code],
-        check=True,
-        env=make_verify_env(project_root),
-    )
+    if result.returncode != 0:
+        raise SystemExit(f"verify command failed with exit code {result.returncode}")
 
 
 def main() -> None:
@@ -172,6 +210,8 @@ def main() -> None:
 
     project_root = Path(args.project_root).resolve() if args.project_root else Path(__file__).resolve().parent
     data_dir = (project_root / args.data_dir).resolve()
+    log(f"project_root: {project_root}")
+    log(f"data_dir: {data_dir}")
 
     if not data_dir.exists():
         raise FileNotFoundError(f"Data directory not found: {data_dir}")
@@ -198,14 +238,14 @@ def main() -> None:
     )
 
     if args.install:
+        log("install requirements")
         install_requirements(project_root)
 
     if args.verify:
+        log("verify imports")
         verify_imports(project_root)
 
-    print("Colab setup complete.")
-    print(f"project_root: {project_root}")
-    print(f"data_dir    : {data_dir}")
+    log("Colab setup complete.")
 
 
 if __name__ == "__main__":
